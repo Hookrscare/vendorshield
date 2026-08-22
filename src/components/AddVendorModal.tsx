@@ -1,9 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { X, Sparkles, Plus, Check } from "lucide-react";
+import { Sparkles, Plus, Check } from "lucide-react";
 import { Category, DPAStatus, RiskLevel, SecurityCertification, SubProcessorVendor } from "@/lib/types";
 import { DIRECTORY_VENDORS } from "@/lib/initial-data";
+import { AccessibleModal } from "@/components/ui/AccessibleModal";
 
 interface AddVendorModalProps {
   isOpen: boolean;
@@ -32,7 +33,6 @@ const ALL_CERTS: SecurityCertification[] = [
 
 export function AddVendorModal({ isOpen, onClose, onAdd }: AddVendorModalProps) {
   const [activeTab, setActiveTab] = useState<"directory" | "custom">("directory");
-  const [selectedDirSlug, setSelectedDirSlug] = useState<string>("");
   const [searchDir, setSearchDir] = useState<string>("");
 
   // Custom form state
@@ -45,11 +45,12 @@ export function AddVendorModal({ isOpen, onClose, onAdd }: AddVendorModalProps) 
   const [dpaUrl, setDpaUrl] = useState("");
   const [dpaStatus, setDpaStatus] = useState<DPAStatus>("Signed");
   const [riskLevel, setRiskLevel] = useState<RiskLevel>("Low");
-  const [certifications, setCertifications] = useState<SecurityCertification[]>(["SOC 2 Type II", "GDPR Compliant"]);
+  const [certifications, setCertifications] = useState<SecurityCertification[]>([
+    "SOC 2 Type II",
+    "GDPR Compliant",
+  ]);
   const [notes, setNotes] = useState("");
   const [isPublic, setIsPublic] = useState(true);
-
-  if (!isOpen) return null;
 
   const filteredDirectory = DIRECTORY_VENDORS.filter(
     (v) =>
@@ -117,90 +118,76 @@ export function AddVendorModal({ isOpen, onClose, onAdd }: AddVendorModalProps) 
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="bg-gray-900 border border-gray-800 rounded-2xl w-full max-w-2xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
-        {/* Modal Header */}
-        <div className="px-6 py-4 border-b border-gray-800 flex items-center justify-between bg-gray-950/50">
-          <div>
-            <h3 className="text-lg font-bold text-white flex items-center gap-2">
-              <Plus className="w-5 h-5 text-blue-400" />
-              Add Sub-Processor to Register
-            </h3>
-            <p className="text-xs text-gray-400">
-              Track DPA status, security controls, and sync with your public page.
-            </p>
-          </div>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-white p-1.5 rounded-lg hover:bg-gray-800 transition-colors"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-
+    <AccessibleModal
+      isOpen={isOpen}
+      onClose={onClose}
+      title="Add Sub-Processor to Register"
+      maxWidth="max-w-2xl"
+    >
+      <div className="space-y-4">
         {/* Tab Switcher */}
-        <div className="flex border-b border-gray-800 bg-gray-950/30 px-6 pt-3 gap-4">
+        <div className="flex border-b border-white/10 pb-2 gap-4">
           <button
             onClick={() => setActiveTab("directory")}
-            className={`pb-3 text-sm font-semibold border-b-2 flex items-center gap-2 transition-all ${
+            className={`pb-2 text-xs font-mono font-semibold border-b-2 flex items-center gap-1.5 transition-all ${
               activeTab === "directory"
-                ? "border-blue-500 text-blue-400"
+                ? "border-cyan-400 text-cyan-300"
                 : "border-transparent text-gray-400 hover:text-gray-200"
             }`}
           >
-            <Sparkles className="w-4 h-4" />
-            1-Click Import from Directory (30+)
+            <Sparkles className="w-3.5 h-3.5" />
+            1-Click Directory Import (30+)
           </button>
           <button
             onClick={() => setActiveTab("custom")}
-            className={`pb-3 text-sm font-semibold border-b-2 flex items-center gap-2 transition-all ${
+            className={`pb-2 text-xs font-mono font-semibold border-b-2 flex items-center gap-1.5 transition-all ${
               activeTab === "custom"
-                ? "border-blue-500 text-blue-400"
+                ? "border-cyan-400 text-cyan-300"
                 : "border-transparent text-gray-400 hover:text-gray-200"
             }`}
           >
-            <Plus className="w-4 h-4" />
+            <Plus className="w-3.5 h-3.5" />
             Custom Vendor Entry
           </button>
         </div>
 
         {/* Tab 1: Directory Import */}
         {activeTab === "directory" ? (
-          <div className="p-6 overflow-y-auto space-y-4 flex-1">
+          <div className="space-y-3">
             <input
               type="text"
               placeholder="Search pre-indexed vendors (e.g. OpenAI, Stripe, AWS, Resend)..."
               value={searchDir}
               onChange={(e) => setSearchDir(e.target.value)}
-              className="w-full px-4 py-2.5 bg-gray-950 border border-gray-800 rounded-xl text-sm text-white focus:outline-none focus:border-blue-500 placeholder-gray-500"
+              className="w-full px-4 py-2 bg-black/40 border border-white/10 rounded-xl text-xs font-mono text-white focus:outline-none focus:border-cyan-400 placeholder-gray-500"
             />
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[380px] overflow-y-auto pr-1">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 max-h-[360px] overflow-y-auto pr-1">
               {filteredDirectory.map((item) => (
                 <div
                   key={item.slug}
                   onClick={() => handleSelectFromDirectory(item.slug)}
-                  className="p-3.5 bg-gray-950/80 border border-gray-800 hover:border-blue-500/60 rounded-xl cursor-pointer transition-all hover:bg-gray-800/40 group flex flex-col justify-between gap-2"
+                  className="p-3 bg-[#0c1322] border border-white/5 hover:border-cyan-500/50 rounded-xl cursor-pointer transition-all hover:bg-white/[0.04] group flex flex-col justify-between gap-2"
                 >
                   <div className="flex items-start justify-between">
                     <div>
-                      <h4 className="font-semibold text-white group-hover:text-blue-400 transition-colors text-sm">
+                      <h4 className="font-bold text-white group-hover:text-cyan-300 transition-colors text-xs font-sans">
                         {item.name}
                       </h4>
-                      <p className="text-[11px] text-gray-400 line-clamp-1">{item.description}</p>
+                      <p className="text-[10px] text-gray-400 line-clamp-1">{item.description}</p>
                     </div>
-                    <span className="text-[10px] bg-blue-500/10 text-blue-400 px-2 py-0.5 rounded border border-blue-500/20 font-medium">
+                    <span className="text-[9px] bg-cyan-500/10 text-cyan-300 px-1.5 py-0.5 rounded border border-cyan-500/20 font-mono">
                       {item.category.split(" ")[0]}
                     </span>
                   </div>
 
-                  <div className="flex items-center justify-between pt-2 border-t border-gray-800/60 text-[11px]">
-                    <span className="text-emerald-400 flex items-center gap-1 font-mono">
-                      <Check className="w-3 h-3" /> SOC 2 & DPA
+                  <div className="flex items-center justify-between pt-1.5 border-t border-white/5 text-[10px] font-mono">
+                    <span className="text-emerald-400 flex items-center gap-1">
+                      <Check className="w-3 h-3" /> SOC 2 &amp; DPA
                     </span>
-                    <button className="text-xs text-blue-400 group-hover:text-blue-300 font-medium flex items-center gap-1">
-                      + Add to Register
-                    </button>
+                    <span className="text-cyan-400 group-hover:text-cyan-300 font-semibold">
+                      + Add
+                    </span>
                   </div>
                 </div>
               ))}
@@ -208,11 +195,11 @@ export function AddVendorModal({ isOpen, onClose, onAdd }: AddVendorModalProps) 
           </div>
         ) : (
           /* Tab 2: Custom Form */
-          <form onSubmit={handleCustomSubmit} className="p-6 overflow-y-auto space-y-4 flex-1">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <form onSubmit={handleCustomSubmit} className="space-y-3.5 max-h-[420px] overflow-y-auto pr-1">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-semibold text-gray-300 mb-1.5">
-                  Vendor / Service Name *
+                <label className="block text-[11px] font-mono font-semibold text-gray-300 mb-1">
+                  Vendor Name *
                 </label>
                 <input
                   type="text"
@@ -220,16 +207,18 @@ export function AddVendorModal({ isOpen, onClose, onAdd }: AddVendorModalProps) 
                   placeholder="e.g. Supabase, Mixpanel"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className="w-full px-3.5 py-2 bg-gray-950 border border-gray-800 rounded-lg text-sm text-white focus:border-blue-500 focus:outline-none"
+                  className="w-full px-3 py-1.5 bg-black/40 border border-white/10 rounded-lg text-xs text-white focus:border-cyan-400 focus:outline-none"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-gray-300 mb-1.5">Category *</label>
+                <label className="block text-[11px] font-mono font-semibold text-gray-300 mb-1">
+                  Category *
+                </label>
                 <select
                   value={category}
                   onChange={(e) => setCategory(e.target.value as Category)}
-                  className="w-full px-3.5 py-2 bg-gray-950 border border-gray-800 rounded-lg text-sm text-white focus:border-blue-500 focus:outline-none"
+                  className="w-full px-3 py-1.5 bg-black/40 border border-white/10 rounded-lg text-xs text-white focus:border-cyan-400 focus:outline-none"
                 >
                   {CATEGORIES.map((cat) => (
                     <option key={cat} value={cat}>
@@ -241,49 +230,27 @@ export function AddVendorModal({ isOpen, onClose, onAdd }: AddVendorModalProps) 
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-gray-300 mb-1.5">Description</label>
+              <label className="block text-[11px] font-mono font-semibold text-gray-300 mb-1">
+                Description
+              </label>
               <input
                 type="text"
-                placeholder="Brief summary of how this vendor is used in your software"
+                placeholder="Brief summary of vendor usage"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                className="w-full px-3.5 py-2 bg-gray-950 border border-gray-800 rounded-lg text-sm text-white focus:border-blue-500 focus:outline-none"
+                className="w-full px-3 py-1.5 bg-black/40 border border-white/10 rounded-lg text-xs text-white focus:border-cyan-400 focus:outline-none"
               />
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-semibold text-gray-300 mb-1.5">Website URL</label>
-                <input
-                  type="url"
-                  placeholder="https://example.com"
-                  value={website}
-                  onChange={(e) => setWebsite(e.target.value)}
-                  className="w-full px-3.5 py-2 bg-gray-950 border border-gray-800 rounded-lg text-sm text-white focus:border-blue-500 focus:outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-gray-300 mb-1.5">
-                  Data Processing Location
+                <label className="block text-[11px] font-mono font-semibold text-gray-300 mb-1">
+                  DPA Status *
                 </label>
-                <input
-                  type="text"
-                  placeholder="e.g. United States (US-East-1), EU (Frankfurt)"
-                  value={dataLocation}
-                  onChange={(e) => setDataLocation(e.target.value)}
-                  className="w-full px-3.5 py-2 bg-gray-950 border border-gray-800 rounded-lg text-sm text-white focus:border-blue-500 focus:outline-none"
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-semibold text-gray-300 mb-1.5">DPA Status *</label>
                 <select
                   value={dpaStatus}
                   onChange={(e) => setDpaStatus(e.target.value as DPAStatus)}
-                  className="w-full px-3.5 py-2 bg-gray-950 border border-gray-800 rounded-lg text-sm text-white focus:border-blue-500 focus:outline-none"
+                  className="w-full px-3 py-1.5 bg-black/40 border border-white/10 rounded-lg text-xs text-white focus:border-cyan-400 focus:outline-none"
                 >
                   <option value="Signed">Signed (Full Compliance)</option>
                   <option value="Under Review">Under Review</option>
@@ -293,11 +260,13 @@ export function AddVendorModal({ isOpen, onClose, onAdd }: AddVendorModalProps) 
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-gray-300 mb-1.5">Risk Level *</label>
+                <label className="block text-[11px] font-mono font-semibold text-gray-300 mb-1">
+                  Risk Level *
+                </label>
                 <select
                   value={riskLevel}
                   onChange={(e) => setRiskLevel(e.target.value as RiskLevel)}
-                  className="w-full px-3.5 py-2 bg-gray-950 border border-gray-800 rounded-lg text-sm text-white focus:border-blue-500 focus:outline-none"
+                  className="w-full px-3 py-1.5 bg-black/40 border border-white/10 rounded-lg text-xs text-white focus:border-cyan-400 focus:outline-none"
                 >
                   <option value="Low">Low Risk</option>
                   <option value="Medium">Medium Risk</option>
@@ -307,32 +276,10 @@ export function AddVendorModal({ isOpen, onClose, onAdd }: AddVendorModalProps) 
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-gray-300 mb-1.5">
-                Customer Data Processed (comma-separated)
+              <label className="block text-[11px] font-mono font-semibold text-gray-300 mb-1">
+                Security Certifications
               </label>
-              <input
-                type="text"
-                placeholder="User Email, IP Address, Chat Logs, Billing Token"
-                value={dataProcessed}
-                onChange={(e) => setDataProcessed(e.target.value)}
-                className="w-full px-3.5 py-2 bg-gray-950 border border-gray-800 rounded-lg text-sm text-white focus:border-blue-500 focus:outline-none"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-gray-300 mb-1.5">DPA / Legal URL</label>
-              <input
-                type="url"
-                placeholder="https://example.com/dpa"
-                value={dpaUrl}
-                onChange={(e) => setDpaUrl(e.target.value)}
-                className="w-full px-3.5 py-2 bg-gray-950 border border-gray-800 rounded-lg text-sm text-white focus:border-blue-500 focus:outline-none"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-gray-300 mb-1.5">Security Certifications</label>
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap gap-1.5">
                 {ALL_CERTS.map((cert) => {
                   const active = certifications.includes(cert);
                   return (
@@ -340,10 +287,10 @@ export function AddVendorModal({ isOpen, onClose, onAdd }: AddVendorModalProps) 
                       type="button"
                       key={cert}
                       onClick={() => toggleCert(cert)}
-                      className={`text-xs px-2.5 py-1 rounded-md border transition-all ${
+                      className={`text-[10px] font-mono px-2 py-0.5 rounded border transition-all ${
                         active
-                          ? "bg-blue-600/20 border-blue-500 text-blue-300"
-                          : "bg-gray-950 border-gray-800 text-gray-400 hover:border-gray-700"
+                          ? "bg-cyan-500/20 border-cyan-500 text-cyan-300"
+                          : "bg-black/40 border-white/10 text-gray-400 hover:border-white/20"
                       }`}
                     >
                       {active && "✓ "}
@@ -360,24 +307,24 @@ export function AddVendorModal({ isOpen, onClose, onAdd }: AddVendorModalProps) 
                 id="isPublic"
                 checked={isPublic}
                 onChange={(e) => setIsPublic(e.target.checked)}
-                className="rounded border-gray-800 bg-gray-950 text-blue-600 focus:ring-blue-500 h-4 w-4"
+                className="rounded border-white/10 bg-black/40 text-cyan-500 focus:ring-cyan-400 h-4 w-4"
               />
-              <label htmlFor="isPublic" className="text-xs text-gray-300">
-                Display on public <code className="text-blue-400">/subprocessors</code> page
+              <label htmlFor="isPublic" className="text-xs text-gray-300 font-mono">
+                Display on public <code className="text-cyan-400">/subprocessors</code> page
               </label>
             </div>
 
-            <div className="pt-4 border-t border-gray-800 flex justify-end gap-3">
+            <div className="pt-3 border-t border-white/10 flex justify-end gap-2.5">
               <button
                 type="button"
                 onClick={onClose}
-                className="px-4 py-2 text-sm text-gray-300 hover:text-white bg-gray-800 hover:bg-gray-700 rounded-lg transition-colors"
+                className="px-4 py-1.5 text-xs font-mono text-gray-300 hover:text-white bg-white/5 hover:bg-white/10 rounded-lg transition-colors"
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                className="px-5 py-2 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-500 rounded-lg shadow-md shadow-blue-600/20 transition-all"
+                className="px-4 py-1.5 text-xs font-mono font-bold text-gray-950 bg-cyan-400 hover:bg-cyan-300 rounded-lg shadow-md shadow-cyan-500/20 transition-all"
               >
                 Save Sub-Processor
               </button>
@@ -385,6 +332,6 @@ export function AddVendorModal({ isOpen, onClose, onAdd }: AddVendorModalProps) 
           </form>
         )}
       </div>
-    </div>
+    </AccessibleModal>
   );
 }
