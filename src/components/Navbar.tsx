@@ -14,6 +14,9 @@ import {
   Mic,
   Briefcase,
   Layers,
+  Cpu,
+  Eye,
+  Chrome,
 } from "lucide-react";
 import { PortfolioSwitcher } from "./PortfolioSwitcher";
 
@@ -23,6 +26,7 @@ export function Navbar() {
 
   if (isEmbed) return null;
 
+  const isDispel = pathname?.startsWith("/dispel");
   const isSnapInspect = pathname?.startsWith("/snapinspect");
 
   return (
@@ -34,7 +38,50 @@ export function Navbar() {
         </div>
 
         {/* Dynamic Navigation Links based on active product */}
-        {isSnapInspect ? (
+        {isDispel ? (
+          /* Dispel Lens Navigation */
+          <nav className="hidden md:flex items-center gap-1 text-sm font-medium text-gray-300">
+            <Link
+              href="/dispel"
+              className={`px-3 py-2 rounded-md transition-colors flex items-center gap-1.5 ${
+                pathname === "/dispel"
+                  ? "bg-gray-800/80 text-white"
+                  : "hover:text-white hover:bg-gray-800/50"
+              }`}
+            >
+              <Cpu className="w-4 h-4 text-cyan-400" />
+              Overview
+            </Link>
+            <Link
+              href="/dispel/app"
+              className={`px-3 py-2 rounded-md transition-colors flex items-center gap-1.5 ${
+                pathname === "/dispel/app"
+                  ? "bg-gray-800/80 text-white"
+                  : "hover:text-white hover:bg-gray-800/50"
+              }`}
+            >
+              <Eye className="w-4 h-4 text-cyan-400" />
+              Forensic HUD
+            </Link>
+            <Link
+              href="/dispel/extension"
+              className={`px-3 py-2 rounded-md transition-colors flex items-center gap-1.5 ${
+                pathname === "/dispel/extension"
+                  ? "bg-gray-800/80 text-white"
+                  : "hover:text-white hover:bg-gray-800/50"
+              }`}
+            >
+              <Chrome className="w-4 h-4 text-cyan-400" />
+              Extension (MV3)
+            </Link>
+            <Link
+              href="/dispel#pricing"
+              className="px-3 py-2 rounded-md hover:text-white hover:bg-gray-800/50 transition-colors text-xs text-gray-400 font-mono"
+            >
+              Pricing
+            </Link>
+          </nav>
+        ) : isSnapInspect ? (
           /* SnapInspect AI Navigation */
           <nav className="hidden md:flex items-center gap-1 text-sm font-medium text-gray-300">
             <Link
@@ -139,7 +186,23 @@ export function Navbar() {
 
         {/* Action Buttons */}
         <div className="flex items-center gap-2.5">
-          {isSnapInspect ? (
+          {isDispel ? (
+            <>
+              <Link
+                href="/dispel/extension"
+                className="hidden sm:inline-flex items-center gap-1.5 text-xs text-cyan-400 bg-cyan-500/10 hover:bg-cyan-500/20 px-3 py-1.5 rounded-full border border-cyan-500/20 transition-colors font-mono"
+              >
+                <Chrome className="w-3.5 h-3.5" />
+                Chrome Extension
+              </Link>
+              <Link
+                href="/dispel/app"
+                className="inline-flex items-center justify-center px-4 py-2 text-sm font-mono font-bold text-gray-950 bg-gradient-to-r from-cyan-500 to-teal-400 hover:from-cyan-400 rounded-lg shadow-md shadow-cyan-500/30 transition-all hover:scale-[1.02] active:scale-[0.98]"
+              >
+                Open Reality HUD
+              </Link>
+            </>
+          ) : isSnapInspect ? (
             <>
               <Link
                 href="/snapinspect/toolkit"
@@ -158,11 +221,11 @@ export function Navbar() {
           ) : (
             <>
               <Link
-                href="/snapinspect"
-                className="hidden sm:inline-flex items-center gap-1.5 text-xs text-red-400 bg-red-500/10 hover:bg-red-500/20 px-3 py-1.5 rounded-full border border-red-500/20 transition-colors"
+                href="/dispel"
+                className="hidden sm:inline-flex items-center gap-1.5 text-xs text-cyan-400 bg-cyan-500/10 hover:bg-cyan-500/20 px-3 py-1.5 rounded-full border border-cyan-500/20 transition-colors font-mono"
               >
-                <Camera className="w-3.5 h-3.5" />
-                Try SnapInspect AI 📸
+                <Cpu className="w-3.5 h-3.5" />
+                Dispel Lens 👁️
               </Link>
               <Link
                 href="/dashboard"

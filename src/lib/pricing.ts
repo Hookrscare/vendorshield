@@ -54,4 +54,20 @@ export const PRICING_TIERS: Record<string, PricingTier> = {
     interval: "one_time",
     product: "Digital Toolkit",
   },
+
+  // Dispel Lens Tiers
+  "dispel-pro": {
+    name: "Dispel Lens Security Pro",
+    priceId: process.env.STRIPE_DISPEL_PRO_PRICE_ID || "price_dispel_pro_mock",
+    amount: 2900, // $29.00
+    interval: "month",
+    product: "Dispel Lens",
+  },
+  "dispel-enterprise": {
+    name: "Dispel Lens Enterprise API",
+    priceId: process.env.STRIPE_DISPEL_ENTERPRISE_PRICE_ID || "price_dispel_enterprise_mock",
+    amount: 29900, // $299.00
+    interval: "month",
+    product: "Dispel Lens",
+  },
 };
