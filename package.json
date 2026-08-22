@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "find-leads": "node scripts/lead_generator.js"
   },
   "dependencies": {
     "canvas-confetti": "^1.9.3",
