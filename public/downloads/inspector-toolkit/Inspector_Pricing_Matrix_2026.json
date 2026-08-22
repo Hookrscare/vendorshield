@@ -1,0 +1,28 @@
+{
+  "currency": "USD",
+  "version": "2026.1",
+  "baseRate": {
+    "residentialUpTo1500SqFt": 395,
+    "perAdditional1000SqFt": 65,
+    "commercialRoofFlatRateBase": 750,
+    "commercialPerSquareFootRate": 0.08,
+    "hvacDedicatedMechanicalAudit": 285
+  },
+  "propertyAgeSurcharges": {
+    "builtPriorTo1980": 50,
+    "builtPriorTo1950": 95,
+    "historicHomePriorTo1920": 160
+  },
+  "hazardAndAccessFees": {
+    "crawlspaceEntry": 45,
+    "steepRoofDroneOrPoleScan": 60,
+    "detachedGuestHouseOrADU": 125,
+    "outOfServiceRadiusPerMile": 1.75
+  },
+  "highMarginAncillaryAddOns": [
+    { "service": "Continuous Radon Gas 48-Hr Monitor", "retailPrice": 165, "laborMinutes": 20, "marginPercent": 82 },
+    { "service": "Infrared Thermal Imaging Moisture Scan", "retailPrice": 125, "laborMinutes": 15, "marginPercent": 94 },
+    { "service": "Main Sewer Line HD Video Scope", "retailPrice": 240, "laborMinutes": 35, "marginPercent": 88 },
+    { "service": "Well Water Quality & Coliform Lab Panel", "retailPrice": 195, "labCost": 45, "marginPercent": 77 }
+  ]
+}
