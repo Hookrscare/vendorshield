@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useId, useRef } from "react";
 
 interface AccessibleModalProps {
   isOpen: boolean;
@@ -19,6 +19,7 @@ export function AccessibleModal({
 }: AccessibleModalProps) {
   const dialogRef = useRef<HTMLDivElement>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
+  const titleId = useId();
 
   useEffect(() => {
     if (!isOpen) return;
@@ -69,7 +70,7 @@ export function AccessibleModal({
     <div
       role="dialog"
       aria-modal="true"
-      aria-labelledby="accessible-modal-title"
+      aria-labelledby={titleId}
       className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md transition-opacity duration-300"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
@@ -81,7 +82,7 @@ export function AccessibleModal({
       >
         <div className="flex items-center justify-between pb-3 border-b border-white/10">
           <h2
-            id="accessible-modal-title"
+            id={titleId}
             className="text-lg font-bold text-white font-display tracking-wide"
           >
             {title}

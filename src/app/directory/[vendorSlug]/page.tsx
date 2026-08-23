@@ -14,6 +14,7 @@ import {
   Plus,
   AlertCircle,
 } from "lucide-react";
+import { CheckoutButton } from "@/components/CheckoutButton";
 
 export function generateStaticParams() {
   return DIRECTORY_VENDORS.map((v) => ({
@@ -205,9 +206,14 @@ export default function VendorDetailPage({
               Claim this profile to verify your security certifications and receive sub-processor update inquiries.
             </p>
           </div>
-          <button className="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-white rounded-xl text-xs font-semibold border border-gray-700 transition-colors shrink-0">
-            Claim Profile
-          </button>
+          <div className="shrink-0 w-full sm:w-auto">
+            <CheckoutButton
+              planId="vendorshield-pso-claim"
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-semibold shadow-md shadow-blue-600/30 transition-colors"
+            >
+              Claim Profile ($199/mo)
+            </CheckoutButton>
+          </div>
         </div>
       </div>
     </div>

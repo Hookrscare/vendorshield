@@ -173,6 +173,10 @@ export function SpatialDefectCanvas() {
       }
 
       renderer.render(scene, camera);
+      if (prefersReducedMotion) {
+        animationFrameId = 0;
+        return;
+      }
       animationFrameId = requestAnimationFrame(render);
     }
 
@@ -205,6 +209,14 @@ export function SpatialDefectCanvas() {
       roofGeo.dispose();
       roofEdges.dispose();
       roofMat.dispose();
+      pinMeshes.forEach(({ mesh }) => {
+        mesh.geometry.dispose();
+        if (Array.isArray(mesh.material)) {
+          mesh.material.forEach((material) => material.dispose());
+        } else {
+          mesh.material.dispose();
+        }
+      });
     };
   }, []);
 

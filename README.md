@@ -46,6 +46,10 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000) in your browser.
 
+Copy `.env.example` to `.env.local` before testing checkout. Production checkout
+requires `NEXT_PUBLIC_APP_URL`, `STRIPE_SECRET_KEY`, and
+`STRIPE_WEBHOOK_SECRET`; the local simulator is disabled in production.
+
 ---
 
 ## 🌐 Routes Overview

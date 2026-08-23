@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import { ThreeTrustGraph } from "@/components/canvas/ThreeTrustGraph";
 import { MagneticButton } from "@/components/motion/MagneticButton";
+import { CheckoutButton } from "@/components/CheckoutButton";
 
 export default function LandingPage() {
   const [vendorCount, setVendorCount] = useState(24);
@@ -296,6 +297,131 @@ export default function LandingPage() {
                   AUTOMATE YOUR REGISTER
                 </button>
               </Link>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Pricing Section */}
+      <section className="py-20 px-4 sm:px-6 lg:px-8 border-t border-white/5 bg-[#050811]" id="pricing">
+        <div className="max-w-6xl mx-auto space-y-12">
+          <div className="text-center max-w-2xl mx-auto space-y-3">
+            <span className="text-xs font-mono font-semibold text-cyan-400 uppercase tracking-wider">
+              Transparent Compliance Pricing
+            </span>
+            <h2 className="text-3xl sm:text-4xl font-display font-extrabold text-white">
+              Automate Your Vendor Risk &amp; SOC 2 Sub-Processor Register
+            </h2>
+            <p className="text-gray-400 text-xs sm:text-sm font-mono">
+              Never fail an audit on missing vendor DPAs again. 14-day money-back guarantee.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {/* Free Developer Tier */}
+            <div className="tactile-surface border border-white/10 rounded-3xl p-8 space-y-6 flex flex-col justify-between">
+              <div className="space-y-4">
+                <div>
+                  <h3 className="text-lg font-bold text-white font-mono">Developer Free</h3>
+                  <p className="text-xs text-gray-400 font-sans">For side projects &amp; early validation</p>
+                </div>
+                <div className="flex items-baseline gap-1 font-mono">
+                  <span className="text-4xl font-extrabold text-white">$0</span>
+                  <span className="text-xs text-gray-400">/ forever</span>
+                </div>
+                <ul className="space-y-2.5 text-xs text-gray-300 pt-4 border-t border-white/5 font-mono">
+                  <li className="flex items-center gap-2">
+                    <Check className="w-4 h-4 text-cyan-400" /> Up to 5 sub-processors
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <Check className="w-4 h-4 text-cyan-400" /> Public disclosure portal
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <Check className="w-4 h-4 text-cyan-400" /> Basic compliance check
+                  </li>
+                </ul>
+              </div>
+
+              <Link
+                href="/dashboard"
+                className="w-full py-3 bg-white/5 hover:bg-white/10 text-white font-mono font-semibold text-xs rounded-xl transition-colors text-center block border border-white/10"
+              >
+                Get Started Free
+              </Link>
+            </div>
+
+            {/* Startup Plan */}
+            <div className="tactile-surface border-2 border-cyan-500 rounded-3xl p-8 space-y-6 flex flex-col justify-between shadow-2xl relative bg-gradient-to-b from-cyan-950/30 via-[#070d18] to-[#070d18]">
+              <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-cyan-500 text-gray-950 font-mono font-bold text-[10px] uppercase px-3 py-1 rounded-full shadow-md">
+                Recommended for SOC 2
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <h3 className="text-lg font-bold text-white font-mono">Startup SOC 2</h3>
+                  <p className="text-xs text-gray-400 font-sans">For Seed &amp; Series A tech companies</p>
+                </div>
+                <div className="flex items-baseline gap-1 font-mono">
+                  <span className="text-4xl font-extrabold text-white">$59</span>
+                  <span className="text-xs text-gray-400">/ month</span>
+                </div>
+                <ul className="space-y-2.5 text-xs text-gray-300 pt-4 border-t border-white/5 font-mono">
+                  <li className="flex items-center gap-2">
+                    <Check className="w-4 h-4 text-cyan-400" /> Up to 35 active sub-processors
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <Check className="w-4 h-4 text-cyan-400" /> 1-Click Signed SOC 2 / ISO PDF Export
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <Check className="w-4 h-4 text-cyan-400" /> Embeddable /subprocessors widget
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <Check className="w-4 h-4 text-cyan-400" /> Automated DPA expiration alerts
+                  </li>
+                </ul>
+              </div>
+
+              <CheckoutButton
+                planId="vendorshield-startup"
+                className="py-3 bg-cyan-500 hover:bg-cyan-400 text-gray-950 font-mono font-bold text-xs rounded-xl shadow-lg shadow-cyan-500/30 transition-all"
+              >
+                Subscribe ($59/mo)
+              </CheckoutButton>
+            </div>
+
+            {/* Growth Plan */}
+            <div className="tactile-surface border border-white/10 rounded-3xl p-8 space-y-6 flex flex-col justify-between">
+              <div className="space-y-4">
+                <div>
+                  <h3 className="text-lg font-bold text-white font-mono">Growth &amp; Scale</h3>
+                  <p className="text-xs text-gray-400 font-sans">For multi-product engineering teams</p>
+                </div>
+                <div className="flex items-baseline gap-1 font-mono">
+                  <span className="text-4xl font-extrabold text-white">$149</span>
+                  <span className="text-xs text-gray-400">/ month</span>
+                </div>
+                <ul className="space-y-2.5 text-xs text-gray-300 pt-4 border-t border-white/5 font-mono">
+                  <li className="flex items-center gap-2">
+                    <Check className="w-4 h-4 text-indigo-400" /> Unlimited sub-processor inventory
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <Check className="w-4 h-4 text-indigo-400" /> Custom domain trust portal (trust.yourdomain.com)
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <Check className="w-4 h-4 text-indigo-400" /> Multi-organization &amp; team access
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <Check className="w-4 h-4 text-indigo-400" /> Priority auditor support
+                  </li>
+                </ul>
+              </div>
+
+              <CheckoutButton
+                planId="vendorshield-growth"
+                className="py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-mono font-semibold text-xs rounded-xl transition-colors shadow-md shadow-indigo-600/30"
+              >
+                Subscribe ($149/mo)
+              </CheckoutButton>
             </div>
           </div>
         </div>

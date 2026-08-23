@@ -80,29 +80,31 @@ const FRAGMENT_SHADER = `
   }
 `;
 
+function getFilterInt(mode: LensFilterMode): number {
+  switch (mode) {
+    case "NORMAL":
+      return 0;
+    case "X-RAY VISION":
+      return 1;
+    case "SENSOR NOISE":
+      return 2;
+    case "ECG PULSE":
+      return 3;
+    case "LATTICE":
+      return 4;
+    default:
+      return 0;
+  }
+}
+
 export function DispelShaderCanvas({
   filterMode,
   syntheticProbability,
 }: DispelShaderCanvasProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const materialRef = useRef<THREE.ShaderMaterial | null>(null);
-
-  const getFilterInt = (mode: LensFilterMode): number => {
-    switch (mode) {
-      case "NORMAL":
-        return 0;
-      case "X-RAY VISION":
-        return 1;
-      case "SENSOR NOISE":
-        return 2;
-      case "ECG PULSE":
-        return 3;
-      case "LATTICE":
-        return 4;
-      default:
-        return 0;
-    }
-  };
+  const initialFilterModeRef = useRef(filterMode);
+  const initialSyntheticProbabilityRef = useRef(syntheticProbability);
 
   useEffect(() => {
     if (materialRef.current) {
@@ -136,8 +138,8 @@ export function DispelShaderCanvas({
     // 3. Custom GLSL Shader Material
     const uniforms = {
       u_time: { value: 0.0 },
-      u_filter: { value: getFilterInt(filterMode) },
-      u_synthetic: { value: syntheticProbability },
+      u_filter: { value: getFilterInt(initialFilterModeRef.current) },
+      u_synthetic: { value: initialSyntheticProbabilityRef.current },
       u_resolution: {
         value: new THREE.Vector2(container.clientWidth, container.clientHeight),
       },
@@ -187,6 +189,10 @@ export function DispelShaderCanvas({
       }
 
       renderer.render(scene, camera);
+      if (prefersReducedMotion) {
+        animationFrameId = 0;
+        return;
+      }
       animationFrameId = requestAnimationFrame(render);
     }
 

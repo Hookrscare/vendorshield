@@ -30,6 +30,7 @@ import { VoiceRecorder } from "@/components/snapinspect/VoiceRecorder";
 import { parseInspectorVoiceTranscript } from "@/lib/snapinspect/voice-parser";
 import { SpatialDefectCanvas } from "@/components/canvas/SpatialDefectCanvas";
 import { MagneticButton } from "@/components/motion/MagneticButton";
+import { CheckoutButton } from "@/components/CheckoutButton";
 
 export default function SnapInspectLandingPage() {
   const [inspectionsPerWeek, setInspectionsPerWeek] = useState(6);
@@ -262,6 +263,134 @@ export default function SnapInspectLandingPage() {
                   START MOBILE INSPECTION
                 </button>
               </Link>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Pricing & Subscription Plans */}
+      <section className="py-20 px-4 sm:px-6 lg:px-8 border-t border-white/5 bg-[#050811]" id="pricing">
+        <div className="max-w-6xl mx-auto space-y-12">
+          <div className="text-center max-w-2xl mx-auto space-y-3">
+            <span className="text-xs font-mono font-semibold text-amber-400 uppercase tracking-wider">
+              Field Inspector Pricing
+            </span>
+            <h2 className="text-3xl sm:text-4xl font-display font-extrabold text-white">
+              Save Hours on Every Report &amp; Double Your Job Capacity
+            </h2>
+            <p className="text-gray-400 text-xs sm:text-sm font-mono">
+              Designed for solo operators and multi-inspector inspection teams.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {/* Solo Inspector */}
+            <div className="tactile-surface border-2 border-amber-400 rounded-3xl p-8 space-y-6 flex flex-col justify-between shadow-2xl relative bg-gradient-to-b from-amber-950/30 via-[#0a0d14] to-[#0a0d14]">
+              <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-amber-400 text-gray-950 font-mono font-bold text-[10px] uppercase px-3 py-1 rounded-full shadow-md">
+                Most Popular
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <h3 className="text-lg font-bold text-white font-mono">Solo Inspector</h3>
+                  <p className="text-xs text-gray-400 font-sans">For independent specialty inspectors</p>
+                </div>
+                <div className="flex items-baseline gap-1 font-mono">
+                  <span className="text-4xl font-extrabold text-white">$49</span>
+                  <span className="text-xs text-gray-400">/ month</span>
+                </div>
+                <ul className="space-y-2.5 text-xs text-gray-300 pt-4 border-t border-white/5 font-mono">
+                  <li className="flex items-center gap-2">
+                    <Check className="w-4 h-4 text-amber-400" /> Unlimited on-site voice inspections
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <Check className="w-4 h-4 text-amber-400" /> 1-Click Client PDF generator &amp; photo gallery
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <Check className="w-4 h-4 text-amber-400" /> Home, Roof &amp; HVAC trade templates
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <Check className="w-4 h-4 text-amber-400" /> Offline PWA mobile app
+                  </li>
+                </ul>
+              </div>
+
+              <CheckoutButton
+                planId="snapinspect-solo"
+                className="py-3 bg-amber-400 hover:bg-amber-300 text-gray-950 font-mono font-bold text-xs rounded-xl shadow-lg shadow-amber-500/30 transition-all"
+              >
+                Subscribe ($49/mo)
+              </CheckoutButton>
+            </div>
+
+            {/* Team Plan */}
+            <div className="tactile-surface border border-white/10 rounded-3xl p-8 space-y-6 flex flex-col justify-between">
+              <div className="space-y-4">
+                <div>
+                  <h3 className="text-lg font-bold text-white font-mono">Inspection Team</h3>
+                  <p className="text-xs text-gray-400 font-sans">For multi-inspector firms &amp; franchises</p>
+                </div>
+                <div className="flex items-baseline gap-1 font-mono">
+                  <span className="text-4xl font-extrabold text-white">$129</span>
+                  <span className="text-xs text-gray-400">/ month</span>
+                </div>
+                <ul className="space-y-2.5 text-xs text-gray-300 pt-4 border-t border-white/5 font-mono">
+                  <li className="flex items-center gap-2">
+                    <Check className="w-4 h-4 text-amber-400" /> Up to 5 inspector field seats
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <Check className="w-4 h-4 text-amber-400" /> Centralized team report repository
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <Check className="w-4 h-4 text-amber-400" /> Custom branding &amp; agency logos
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <Check className="w-4 h-4 text-amber-400" /> Automated client review triggers
+                  </li>
+                </ul>
+              </div>
+
+              <CheckoutButton
+                planId="snapinspect-team"
+                className="py-3 bg-white/10 hover:bg-white/20 text-white font-mono font-semibold text-xs rounded-xl transition-colors border border-white/10"
+              >
+                Subscribe ($129/mo)
+              </CheckoutButton>
+            </div>
+
+            {/* Digital Toolkit Bundle */}
+            <div className="tactile-surface border border-white/10 rounded-3xl p-8 space-y-6 flex flex-col justify-between bg-black/40">
+              <div className="space-y-4">
+                <div>
+                  <h3 className="text-lg font-bold text-white font-mono">Business Toolkit</h3>
+                  <p className="text-xs text-gray-400 font-sans">Turnkey contracts, disclaimers &amp; Notion OS</p>
+                </div>
+                <div className="flex items-baseline gap-1 font-mono">
+                  <span className="text-4xl font-extrabold text-white">$49</span>
+                  <span className="text-xs text-gray-400">/ one-time</span>
+                </div>
+                <ul className="space-y-2.5 text-xs text-gray-300 pt-4 border-t border-white/5 font-mono">
+                  <li className="flex items-center gap-2">
+                    <Check className="w-4 h-4 text-amber-400" /> Pre-Inspection Agreement (2026)
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <Check className="w-4 h-4 text-amber-400" /> 50+ Defect &amp; Limitation Clause Library
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <Check className="w-4 h-4 text-amber-400" /> Solo Inspector Notion Operating System
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <Check className="w-4 h-4 text-amber-400" /> Dynamic Pricing Rate Matrix
+                  </li>
+                </ul>
+              </div>
+
+              <CheckoutButton
+                planId="inspector-toolkit"
+                className="py-3 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 font-mono font-bold text-xs rounded-xl transition-colors"
+              >
+                Buy Toolkit ($49 Once)
+              </CheckoutButton>
             </div>
           </div>
         </div>

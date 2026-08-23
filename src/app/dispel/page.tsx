@@ -18,6 +18,7 @@ import {
   Check,
   Terminal,
 } from "lucide-react";
+import { CheckoutButton } from "@/components/CheckoutButton";
 
 export default function DispelLandingPage() {
   return (
@@ -264,12 +265,12 @@ export default function DispelLandingPage() {
                 </ul>
               </div>
 
-              <Link
-                href="/dispel/app"
-                className="w-full py-3 bg-cyan-500 hover:bg-cyan-400 text-gray-950 font-mono font-bold text-xs rounded-xl shadow-lg shadow-cyan-500/30 transition-all text-center block"
+              <CheckoutButton
+                planId="dispel-pro"
+                className="py-3 bg-cyan-500 hover:bg-cyan-400 text-gray-950 font-mono font-bold text-xs rounded-xl shadow-lg shadow-cyan-500/30 transition-all text-center"
               >
-                Start Pro Attestation
-              </Link>
+                Start Pro Attestation ($29/mo)
+              </CheckoutButton>
             </div>
 
             {/* Enterprise Lab */}
@@ -299,12 +300,12 @@ export default function DispelLandingPage() {
                 </ul>
               </div>
 
-              <Link
-                href="/dispel/app"
-                className="w-full py-2.5 bg-gray-900 hover:bg-gray-800 text-white font-mono font-semibold text-xs rounded-xl transition-colors text-center block"
+              <CheckoutButton
+                planId="dispel-enterprise"
+                className="py-2.5 bg-gray-900 hover:bg-gray-800 text-white font-mono font-semibold text-xs rounded-xl transition-colors text-center border border-gray-800"
               >
-                Contact Security Team
-              </Link>
+                Subscribe to API ($299/mo)
+              </CheckoutButton>
             </div>
           </div>
         </div>

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { INSPECTOR_TOOLKIT_RESOURCES, ToolkitResource } from "@/lib/snapinspect/toolkit-data";
+import { AccessibleModal } from "@/components/ui/AccessibleModal";
 import Link from "next/link";
 import {
   Briefcase,
@@ -9,15 +10,13 @@ import {
   Copy,
   Check,
   FileText,
-  DollarSign,
-  Layers,
-  Mail,
   ShieldCheck,
   ArrowLeft,
   Sparkles,
-  ExternalLink,
   ChevronRight,
+  Package,
 } from "lucide-react";
+import { CheckoutButton } from "@/components/CheckoutButton";
 
 export default function InspectorToolkitPage() {
   const [selectedCategory, setSelectedCategory] = useState<string>("All");
@@ -44,6 +43,7 @@ export default function InspectorToolkitPage() {
     document.body.appendChild(element);
     element.click();
     document.body.removeChild(element);
+    URL.revokeObjectURL(element.href);
   };
 
   return (
@@ -101,6 +101,28 @@ export default function InspectorToolkitPage() {
             <div className="flex items-center gap-1.5">
               <Sparkles className="w-4 h-4 text-blue-400" />
               <span>100% Free with SnapInspect AI</span>
+            </div>
+          </div>
+
+          {/* Action Download & Purchase Buttons */}
+          <div className="pt-4 flex flex-col sm:flex-row items-center gap-3">
+            <a
+              href="/downloads/inspector-business-toolkit-2026.zip"
+              download
+              className="w-full sm:w-auto px-6 py-3 bg-amber-400 hover:bg-amber-300 text-gray-950 font-mono font-bold text-xs rounded-xl shadow-lg shadow-amber-500/20 transition-all flex items-center justify-center gap-2"
+            >
+              <Download className="w-4 h-4" />
+              <span>Download Complete .ZIP Bundle</span>
+            </a>
+
+            <div className="w-full sm:w-auto">
+              <CheckoutButton
+                planId="inspector-toolkit"
+                className="px-6 py-3 bg-gray-900 hover:bg-gray-800 text-amber-300 border border-amber-500/40 font-mono font-bold text-xs rounded-xl transition-colors text-center"
+              >
+                <Package className="w-4 h-4" />
+                <span>Buy Full License ($49 Once)</span>
+              </CheckoutButton>
             </div>
           </div>
         </div>
@@ -192,30 +214,22 @@ export default function InspectorToolkitPage() {
           ))}
         </div>
 
-        {/* Modal for full preview */}
-        {activeModalResource && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
-            <div className="bg-gray-900 border border-gray-800 rounded-3xl w-full max-w-3xl max-h-[85vh] overflow-hidden flex flex-col shadow-2xl">
-              <div className="px-6 py-4 border-b border-gray-800 flex items-center justify-between bg-gray-950">
-                <div>
-                  <h3 className="text-base font-bold text-white">{activeModalResource.title}</h3>
-                  <p className="text-xs text-gray-400">{activeModalResource.badge}</p>
-                </div>
-                <button
-                  onClick={() => setActiveModalResource(null)}
-                  className="text-gray-400 hover:text-white text-sm p-1 rounded hover:bg-gray-800"
-                >
-                  ✕
-                </button>
-              </div>
-
-              <div className="p-6 overflow-y-auto flex-1 bg-gray-950/80">
+        <AccessibleModal
+          isOpen={activeModalResource !== null}
+          onClose={() => setActiveModalResource(null)}
+          title={activeModalResource?.title || "Toolkit resource"}
+          maxWidth="max-w-3xl"
+        >
+          {activeModalResource && (
+            <div className="max-h-[70vh] overflow-hidden flex flex-col">
+              <p className="pb-3 text-xs text-gray-400">{activeModalResource.badge}</p>
+              <div className="p-4 overflow-y-auto flex-1 bg-gray-950/80 rounded-xl border border-gray-800">
                 <pre className="text-xs text-gray-300 font-mono whitespace-pre-wrap leading-relaxed">
                   {activeModalResource.content}
                 </pre>
               </div>
 
-              <div className="p-4 border-t border-gray-800 flex justify-between items-center bg-gray-950">
+              <div className="pt-4 flex flex-col sm:flex-row gap-3 sm:justify-between sm:items-center">
                 <span className="text-xs text-gray-500">
                   Filename: {activeModalResource.filename}
                 </span>
@@ -237,8 +251,8 @@ export default function InspectorToolkitPage() {
                 </div>
               </div>
             </div>
-          </div>
-        )}
+          )}
+        </AccessibleModal>
       </div>
     </div>
   );

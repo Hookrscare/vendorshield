@@ -141,7 +141,7 @@ export function ThreeTrustGraph() {
     observer.observe(container);
 
     // 8. Animation & Render Loop
-    let clock = new THREE.Clock();
+    const clock = new THREE.Clock();
 
     function render() {
       if (!isVisible) {
@@ -189,6 +189,10 @@ export function ThreeTrustGraph() {
       }
 
       renderer.render(scene, camera);
+      if (prefersReducedMotion) {
+        animationFrameId = 0;
+        return;
+      }
       animationFrameId = requestAnimationFrame(render);
     }
 
