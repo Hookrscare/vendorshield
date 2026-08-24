@@ -2,7 +2,7 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
-import { createWebGLRendererOrNull } from "@/lib/webgl";
+import { createWebGLRendererOrNull, hasWebGLSupport } from "@/lib/webgl";
 
 interface DefectPin {
   id: string;
@@ -28,6 +28,10 @@ export function SpatialDefectCanvas() {
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
+    if (!hasWebGLSupport()) {
+      setShowFallback(true);
+      return;
+    }
 
     const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 

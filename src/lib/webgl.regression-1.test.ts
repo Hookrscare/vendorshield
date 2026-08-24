@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { createWebGLRendererOrNull } from "./webgl";
+import { createWebGLRendererOrNull, hasWebGLSupport } from "./webgl";
 
 // Regression: ISSUE-001 — Three.js renderer failure crashed entire pages
 // Found by /qa on 2026-08-23
@@ -34,5 +34,25 @@ describe("createWebGLRendererOrNull", () => {
     );
 
     expect(renderer).toBe(expectedRenderer);
+  });
+});
+
+describe("hasWebGLSupport", () => {
+  it("returns false without invoking Three.js when no context is available", () => {
+    const canvasFactory = () =>
+      ({ getContext: vi.fn().mockReturnValue(null) } as unknown as HTMLCanvasElement);
+
+    expect(hasWebGLSupport(canvasFactory)).toBe(false);
+  });
+
+  it("returns true when the browser can create a WebGL context", () => {
+    const canvasFactory = () =>
+      ({
+        getContext: vi.fn((kind: string) =>
+          kind === "webgl2" ? { drawingBufferWidth: 1 } : null
+        ),
+      } as unknown as HTMLCanvasElement);
+
+    expect(hasWebGLSupport(canvasFactory)).toBe(true);
   });
 });

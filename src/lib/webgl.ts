@@ -4,6 +4,23 @@ type RendererFactory = (
   options: THREE.WebGLRendererParameters
 ) => THREE.WebGLRenderer;
 
+type CanvasFactory = () => HTMLCanvasElement;
+
+export function hasWebGLSupport(
+  canvasFactory: CanvasFactory = () => document.createElement("canvas")
+): boolean {
+  try {
+    const canvas = canvasFactory();
+    return Boolean(
+      canvas.getContext("webgl2") ||
+        canvas.getContext("webgl") ||
+        canvas.getContext("experimental-webgl")
+    );
+  } catch {
+    return false;
+  }
+}
+
 export function createWebGLRendererOrNull(
   options: THREE.WebGLRendererParameters,
   factory: RendererFactory = (rendererOptions) =>
