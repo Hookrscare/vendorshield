@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, use } from "react";
 import { SubProcessorVendor } from "@/lib/types";
 import { Search, ExternalLink, Globe, CheckCircle2, ShieldCheck } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 
-export default function EmbedWidgetPage({ params }: { params: { slug: string } }) {
+export default function EmbedWidgetPage({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = use(params);
   const searchParams = useSearchParams();
   const theme = searchParams?.get("theme") || "dark";
   const isLight = theme === "light";
@@ -16,14 +17,14 @@ export default function EmbedWidgetPage({ params }: { params: { slug: string } }
   const [selectedCat, setSelectedCat] = useState("All");
 
   useEffect(() => {
-    fetch(`/api/public/${params.slug}`)
+    fetch(`/api/public/${slug}`)
       .then((r) => r.json())
       .then((data) => {
         if (data.success) setVendors(data.data.vendors);
       })
       .catch((e) => console.error(e))
       .finally(() => setLoading(false));
-  }, [params.slug]);
+  }, [slug]);
 
   const categories = ["All", ...Array.from(new Set(vendors.map((v) => v.category)))];
 

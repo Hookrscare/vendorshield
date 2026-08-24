@@ -3,11 +3,12 @@ import { db } from "@/lib/db";
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { slug: string } }
+  { params }: { params: Promise<{ slug: string }> }
 ) {
+  const { slug } = await params;
   const company = db.getCompany();
   // Support slug match or default demo slug
-  if (company.slug !== params.slug && params.slug !== "demo" && params.slug !== "acme") {
+  if (company.slug !== slug && slug !== "demo" && slug !== "acme") {
     // Return company with the requested slug name for demo versatility
   }
 

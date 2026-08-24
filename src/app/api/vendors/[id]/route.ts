@@ -4,9 +4,10 @@ import { isProductionReadOnlyDemo, readOnlyDemoResponse } from "@/lib/demo-mode"
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const vendor = db.getVendorById(params.id);
+  const { id } = await params;
+  const vendor = db.getVendorById(id);
   if (!vendor) {
     return NextResponse.json(
       { success: false, error: "Vendor not found" },
@@ -18,13 +19,15 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   if (isProductionReadOnlyDemo()) return readOnlyDemoResponse();
 
+  const { id } = await params;
+
   try {
     const body = await request.json();
-    const updated = db.updateVendor(params.id, body);
+    const updated = db.updateVendor(id, body);
     if (!updated) {
       return NextResponse.json(
         { success: false, error: "Vendor not found" },
@@ -42,12 +45,14 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   if (isProductionReadOnlyDemo()) return readOnlyDemoResponse();
 
+  const { id } = await params;
+
   try {
-    const deleted = db.deleteVendor(params.id);
+    const deleted = db.deleteVendor(id);
     if (!deleted) {
       return NextResponse.json(
         { success: false, error: "Vendor not found" },

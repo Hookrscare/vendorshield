@@ -30,7 +30,7 @@ describe("production dashboard demo write protection", () => {
             method: "PUT",
             body: JSON.stringify({ name: "Changed" }),
           }),
-          { params: { id: "vendor-1" } }
+          { params: Promise.resolve({ id: "vendor-1" }) }
         ),
     ],
     [
@@ -40,7 +40,7 @@ describe("production dashboard demo write protection", () => {
           new NextRequest("https://vendorshield-blond.vercel.app/api/vendors/vendor-1", {
             method: "DELETE",
           }),
-          { params: { id: "vendor-1" } }
+          { params: Promise.resolve({ id: "vendor-1" }) }
         ),
     ],
     [

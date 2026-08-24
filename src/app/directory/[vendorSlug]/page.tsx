@@ -22,12 +22,13 @@ export function generateStaticParams() {
   }));
 }
 
-export default function VendorDetailPage({
+export default async function VendorDetailPage({
   params,
 }: {
-  params: { vendorSlug: string };
+  params: Promise<{ vendorSlug: string }>;
 }) {
-  const vendor = DIRECTORY_VENDORS.find((v) => v.slug === params.vendorSlug);
+  const { vendorSlug } = await params;
+  const vendor = DIRECTORY_VENDORS.find((v) => v.slug === vendorSlug);
 
   if (!vendor) {
     notFound();

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, use } from "react";
 import { SubProcessorVendor, CompanySettings } from "@/lib/types";
 import {
   ShieldCheck,
@@ -17,8 +17,9 @@ import { generateCsvExport } from "@/lib/pdf-export";
 export default function PublicSubprocessorsPage({
   params,
 }: {
-  params: { slug: string };
+  params: Promise<{ slug: string }>;
 }) {
+  const { slug } = use(params);
   const [data, setData] = useState<{
     company: CompanySettings;
     vendors: SubProcessorVendor[];
@@ -28,7 +29,7 @@ export default function PublicSubprocessorsPage({
   const [selectedCategory, setSelectedCategory] = useState<string>("All");
 
   useEffect(() => {
-    fetch(`/api/public/${params.slug}`)
+    fetch(`/api/public/${slug}`)
       .then((res) => res.json())
       .then((resData) => {
         if (resData.success) {
@@ -37,7 +38,7 @@ export default function PublicSubprocessorsPage({
       })
       .catch((err) => console.error(err))
       .finally(() => setLoading(false));
-  }, [params.slug]);
+  }, [slug]);
 
   if (loading) {
     return (
@@ -52,7 +53,7 @@ export default function PublicSubprocessorsPage({
 
   const company = data?.company || {
     name: "Acme SaaS Inc.",
-    slug: params.slug,
+    slug: slug,
     website: "https://example.com",
     privacyEmail: "privacy@example.com",
     dpoName: "CISO / Privacy Office",
