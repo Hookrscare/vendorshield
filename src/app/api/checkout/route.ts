@@ -117,17 +117,31 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Interactive Checkout Simulator for local testing or when keys are pending
+    if (process.env.NODE_ENV === "production") {
+      console.error("STRIPE_SECRET_KEY is not configured in production");
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Secure checkout is temporarily unavailable. Please try again shortly.",
+        },
+        { status: 503 }
+      );
+    }
+
+    // Interactive Checkout Simulator is intentionally limited to local development.
     const simulatedCheckoutUrl = `${origin}/dashboard?payment_simulated=true&plan=${planId}&amount=${tier.amount / 100}`;
     return NextResponse.json({
       success: true,
       url: simulatedCheckoutUrl,
       isSimulated: true,
-      message: "Checkout session generated. Configure STRIPE_SECRET_KEY in Vercel for live cards.",
+      message: "Local checkout simulation. Configure STRIPE_SECRET_KEY for Stripe Checkout.",
     });
-  } catch (err: any) {
+  } catch (err: unknown) {
     return NextResponse.json(
-      { success: false, error: err?.message || "Failed to initiate checkout" },
+      {
+        success: false,
+        error: err instanceof Error ? err.message : "Failed to initiate checkout",
+      },
       { status: 500 }
     );
   }
