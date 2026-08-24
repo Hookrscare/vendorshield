@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { isProductionReadOnlyDemo, readOnlyDemoResponse } from "@/lib/demo-mode";
 
 export async function GET() {
   const company = db.getCompany();
@@ -8,6 +9,8 @@ export async function GET() {
 }
 
 export async function PUT(request: NextRequest) {
+  if (isProductionReadOnlyDemo()) return readOnlyDemoResponse();
+
   try {
     const body = await request.json();
     const updated = db.updateCompany(body);

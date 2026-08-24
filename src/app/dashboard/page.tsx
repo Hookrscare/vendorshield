@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 
 export default function DashboardPage() {
+  const isReadOnlyDemo = true;
   const [vendors, setVendors] = useState<SubProcessorVendor[]>([]);
   const [company, setCompany] = useState<CompanySettings | null>(null);
   const [logs, setLogs] = useState<AuditLog[]>([]);
@@ -176,10 +177,12 @@ export default function DashboardPage() {
           <div className="flex flex-wrap items-center gap-2.5">
             <button
               onClick={() => setIsAddOpen(true)}
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs sm:text-sm rounded-xl shadow-lg shadow-blue-600/30 transition-all flex items-center gap-1.5 hover:scale-[1.02]"
+              disabled={isReadOnlyDemo}
+              title="Editing is disabled in the public demo"
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs sm:text-sm rounded-xl shadow-lg shadow-blue-600/30 transition-all flex items-center gap-1.5 hover:scale-[1.02] disabled:bg-gray-800 disabled:text-gray-500 disabled:shadow-none disabled:hover:scale-100 disabled:cursor-not-allowed"
             >
               <Plus className="w-4 h-4" />
-              Add Sub-Processor
+              Read-Only Demo
             </button>
 
             <Link
@@ -207,6 +210,15 @@ export default function DashboardPage() {
               <ExternalLink className="w-3.5 h-3.5" />
             </Link>
           </div>
+        </div>
+
+        <div
+          role="status"
+          className="rounded-2xl border border-blue-500/30 bg-blue-500/10 px-5 py-4 text-sm text-blue-100"
+        >
+          <strong>Public product demo:</strong> all company names, contacts, vendors,
+          risk dates, and audit records shown here are sample data. Editing is disabled
+          and no customer information is exposed.
         </div>
 
         {/* Stats Row */}
@@ -256,6 +268,7 @@ export default function DashboardPage() {
               vendors={vendors}
               onEditVendor={(v) => setEditingVendor(v)}
               onAddClick={() => setIsAddOpen(true)}
+              readOnly={isReadOnlyDemo}
             />
           </div>
         )}
@@ -322,6 +335,7 @@ export default function DashboardPage() {
                   type="text"
                   required
                   value={companyName}
+                  disabled={isReadOnlyDemo}
                   onChange={(e) => setCompanyName(e.target.value)}
                   className="w-full px-3.5 py-2 bg-gray-950 border border-gray-800 rounded-lg text-sm text-white focus:border-blue-500 focus:outline-none"
                 />
@@ -333,6 +347,7 @@ export default function DashboardPage() {
                   type="url"
                   required
                   value={website}
+                  disabled={isReadOnlyDemo}
                   onChange={(e) => setWebsite(e.target.value)}
                   className="w-full px-3.5 py-2 bg-gray-950 border border-gray-800 rounded-lg text-sm text-white focus:border-blue-500 focus:outline-none"
                 />
@@ -347,6 +362,7 @@ export default function DashboardPage() {
                     type="text"
                     required
                     value={dpoName}
+                    disabled={isReadOnlyDemo}
                     onChange={(e) => setDpoName(e.target.value)}
                     className="w-full px-3.5 py-2 bg-gray-950 border border-gray-800 rounded-lg text-sm text-white focus:border-blue-500 focus:outline-none"
                   />
@@ -360,6 +376,7 @@ export default function DashboardPage() {
                     type="email"
                     required
                     value={privacyEmail}
+                    disabled={isReadOnlyDemo}
                     onChange={(e) => setPrivacyEmail(e.target.value)}
                     className="w-full px-3.5 py-2 bg-gray-950 border border-gray-800 rounded-lg text-sm text-white focus:border-blue-500 focus:outline-none"
                   />
@@ -369,9 +386,10 @@ export default function DashboardPage() {
               <div className="pt-4 border-t border-gray-800 flex justify-end">
                 <button
                   type="submit"
-                  className="px-5 py-2 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-500 rounded-lg shadow-md shadow-blue-600/20 transition-all"
+                  disabled={isReadOnlyDemo}
+                  className="px-5 py-2 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-500 rounded-lg shadow-md shadow-blue-600/20 transition-all disabled:bg-gray-800 disabled:text-gray-500 disabled:shadow-none disabled:cursor-not-allowed"
                 >
-                  Save Settings
+                  {isReadOnlyDemo ? "Sample Settings" : "Save Settings"}
                 </button>
               </div>
             </form>
@@ -380,19 +398,23 @@ export default function DashboardPage() {
       </div>
 
       {/* Modals */}
-      <AddVendorModal
-        isOpen={isAddOpen}
-        onClose={() => setIsAddOpen(false)}
-        onAdd={handleAddVendor}
-      />
+      {!isReadOnlyDemo && (
+        <>
+          <AddVendorModal
+            isOpen={isAddOpen}
+            onClose={() => setIsAddOpen(false)}
+            onAdd={handleAddVendor}
+          />
 
-      <EditVendorModal
-        vendor={editingVendor}
-        isOpen={!!editingVendor}
-        onClose={() => setEditingVendor(null)}
-        onUpdate={handleUpdateVendor}
-        onDelete={handleDeleteVendor}
-      />
+          <EditVendorModal
+            vendor={editingVendor}
+            isOpen={!!editingVendor}
+            onClose={() => setEditingVendor(null)}
+            onUpdate={handleUpdateVendor}
+            onDelete={handleDeleteVendor}
+          />
+        </>
+      )}
     </div>
   );
 }

@@ -21,6 +21,7 @@ interface VendorTableProps {
   vendors: SubProcessorVendor[];
   onEditVendor: (vendor: SubProcessorVendor) => void;
   onAddClick: () => void;
+  readOnly?: boolean;
 }
 
 const CATEGORIES: (Category | "All")[] = [
@@ -35,7 +36,12 @@ const CATEGORIES: (Category | "All")[] = [
   "Developer Tools & CI/CD",
 ];
 
-export function VendorTable({ vendors, onEditVendor, onAddClick }: VendorTableProps) {
+export function VendorTable({
+  vendors,
+  onEditVendor,
+  onAddClick,
+  readOnly = false,
+}: VendorTableProps) {
   const [search, setSearch] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("All");
   const [selectedStatus, setSelectedStatus] = useState<string>("All");
@@ -155,9 +161,11 @@ export function VendorTable({ vendors, onEditVendor, onAddClick }: VendorTablePr
 
           <button
             onClick={onAddClick}
-            className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs sm:text-sm rounded-xl shadow-md shadow-blue-600/20 transition-all flex items-center gap-1.5"
+            disabled={readOnly}
+            title={readOnly ? "Editing is disabled in the public demo" : undefined}
+            className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs sm:text-sm rounded-xl shadow-md shadow-blue-600/20 transition-all flex items-center gap-1.5 disabled:bg-gray-800 disabled:text-gray-500 disabled:shadow-none disabled:cursor-not-allowed"
           >
-            + Add Sub-Processor
+            {readOnly ? "Read-Only Demo" : "+ Add Sub-Processor"}
           </button>
         </div>
       </div>
@@ -192,8 +200,10 @@ export function VendorTable({ vendors, onEditVendor, onAddClick }: VendorTablePr
                 filtered.map((vendor) => (
                   <tr
                     key={vendor.id}
-                    className="hover:bg-gray-800/40 transition-colors group cursor-pointer"
-                    onClick={() => onEditVendor(vendor)}
+                    className={`hover:bg-gray-800/40 transition-colors group ${
+                      readOnly ? "cursor-default" : "cursor-pointer"
+                    }`}
+                    onClick={() => !readOnly && onEditVendor(vendor)}
                   >
                     {/* Vendor Name & Purpose */}
                     <td className="py-4 px-4">
@@ -307,13 +317,19 @@ export function VendorTable({ vendors, onEditVendor, onAddClick }: VendorTablePr
                             <ExternalLink className="w-4 h-4" />
                           </a>
                         )}
-                        <button
-                          onClick={() => onEditVendor(vendor)}
-                          className="px-2.5 py-1 text-xs font-semibold text-blue-400 hover:text-white hover:bg-blue-600 rounded-lg transition-colors border border-blue-500/30 flex items-center gap-1"
-                        >
-                          <Edit2 className="w-3 h-3" />
-                          Edit
-                        </button>
+                        {readOnly ? (
+                          <span className="px-2.5 py-1 text-[10px] font-semibold text-gray-500 border border-gray-700 rounded-lg">
+                            Sample data
+                          </span>
+                        ) : (
+                          <button
+                            onClick={() => onEditVendor(vendor)}
+                            className="px-2.5 py-1 text-xs font-semibold text-blue-400 hover:text-white hover:bg-blue-600 rounded-lg transition-colors border border-blue-500/30 flex items-center gap-1"
+                          >
+                            <Edit2 className="w-3 h-3" />
+                            Edit
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>

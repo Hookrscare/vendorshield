@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { isProductionReadOnlyDemo, readOnlyDemoResponse } from "@/lib/demo-mode";
 
 export async function GET(
   request: NextRequest,
@@ -19,6 +20,8 @@ export async function PUT(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  if (isProductionReadOnlyDemo()) return readOnlyDemoResponse();
+
   try {
     const body = await request.json();
     const updated = db.updateVendor(params.id, body);
@@ -41,6 +44,8 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  if (isProductionReadOnlyDemo()) return readOnlyDemoResponse();
+
   try {
     const deleted = db.deleteVendor(params.id);
     if (!deleted) {

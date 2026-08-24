@@ -106,6 +106,12 @@ export default function AuditExportPage() {
           <span className="text-gray-200">SOC 2 &amp; ISO 27001 Audit Pack</span>
         </div>
 
+        <div className="rounded-2xl border border-blue-500/30 bg-blue-500/10 px-5 py-4 text-sm text-blue-100">
+          <strong>Sample audit pack:</strong> this public page demonstrates export
+          formatting with fictional ACME data. It does not contain customer records
+          or an official compliance attestation.
+        </div>
+
         {/* Title Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-gray-800">
           <div>
@@ -127,7 +133,7 @@ export default function AuditExportPage() {
               className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs sm:text-sm rounded-xl shadow-lg shadow-emerald-600/30 transition-all flex items-center gap-2 hover:scale-[1.02]"
             >
               <Download className="w-4 h-4" />
-              {isGeneratingPdf ? "Generating..." : "Download Official PDF"}
+              {isGeneratingPdf ? "Generating..." : "Download Sample PDF"}
             </button>
             <button
               onClick={handleDownloadCsv}
@@ -135,7 +141,7 @@ export default function AuditExportPage() {
               className="px-3.5 py-2.5 bg-gray-900 hover:bg-gray-800 border border-gray-800 text-gray-200 font-semibold text-xs sm:text-sm rounded-xl transition-colors flex items-center gap-1.5"
             >
               <FileText className="w-4 h-4 text-blue-400" />
-              Export CSV
+              Export Sample CSV
             </button>
             <button
               onClick={handleDownloadJson}
@@ -143,7 +149,7 @@ export default function AuditExportPage() {
               className="px-3.5 py-2.5 bg-gray-900 hover:bg-gray-800 border border-gray-800 text-gray-200 font-semibold text-xs sm:text-sm rounded-xl transition-colors flex items-center gap-1.5"
             >
               <FileCode className="w-4 h-4 text-purple-400" />
-              Raw JSON
+              Sample JSON
             </button>
           </div>
         </div>

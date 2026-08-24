@@ -74,6 +74,11 @@ export default function EmbedCodePage() {
           <span className="text-gray-200">Public Embed Widget &amp; Integration</span>
         </div>
 
+        <div className="rounded-2xl border border-blue-500/30 bg-blue-500/10 px-5 py-4 text-sm text-blue-100">
+          <strong>Sample integration:</strong> the generated code points to the public
+          ACME demo dataset. Customer-specific widgets require an authenticated account.
+        </div>
+
         {/* Title Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-gray-800">
           <div>

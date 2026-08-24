@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { isProductionReadOnlyDemo, readOnlyDemoResponse } from "@/lib/demo-mode";
 
 export async function GET(request: NextRequest) {
   try {
@@ -38,6 +39,8 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  if (isProductionReadOnlyDemo()) return readOnlyDemoResponse();
+
   try {
     const body = await request.json();
     if (!body.name || !body.category) {
