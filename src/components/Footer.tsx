@@ -136,8 +136,12 @@ export function Footer() {
             <span className="flex items-center gap-1 text-gray-500">
               <Lock className="w-3.5 h-3.5" /> Zero Data Lock-In &amp; AES-256 Storage
             </span>
-            <span className="text-gray-500">Privacy Policy</span>
-            <span className="text-gray-500">Terms of Service</span>
+            <Link href="/privacy" className="text-gray-500 hover:text-white transition-colors">
+              Privacy Policy
+            </Link>
+            <Link href="/terms" className="text-gray-500 hover:text-white transition-colors">
+              Terms of Service
+            </Link>
           </div>
         </div>
       </div>
