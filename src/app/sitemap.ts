@@ -20,6 +20,18 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: 0.9,
     },
     {
+      url: `${baseUrl}/dashboard/ai-scanner`,
+      lastModified: now,
+      changeFrequency: "weekly",
+      priority: 0.9,
+    },
+    {
+      url: `${baseUrl}/tools/soc2-readiness`,
+      lastModified: now,
+      changeFrequency: "daily",
+      priority: 0.9,
+    },
+    {
       url: `${baseUrl}/directory`,
       lastModified: now,
       changeFrequency: "daily",
@@ -63,7 +75,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     },
   ];
 
-  // Dynamic Programmatic SEO Directory Profile Routes (OpenAI, AWS, Stripe, Supabase, etc.)
+  // Dynamic Programmatic SEO Directory Profile Routes
   const directoryRoutes: MetadataRoute.Sitemap = DIRECTORY_VENDORS.map((vendor) => ({
     url: `${baseUrl}/directory/${vendor.slug}`,
     lastModified: now,
