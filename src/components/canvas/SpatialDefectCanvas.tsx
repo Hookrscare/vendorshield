@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
+import { createWebGLRendererOrNull } from "@/lib/webgl";
 
 interface DefectPin {
   id: string;
@@ -22,6 +23,7 @@ const SAMPLE_PINS: DefectPin[] = [
 
 export function SpatialDefectCanvas() {
   const containerRef = useRef<HTMLDivElement>(null);
+  const [showFallback, setShowFallback] = useState(false);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -41,11 +43,16 @@ export function SpatialDefectCanvas() {
     camera.lookAt(0, 0, 0);
 
     // 2. High-Performance WebGL Renderer
-    const renderer = new THREE.WebGLRenderer({
+    const webglRenderer = createWebGLRendererOrNull({
       antialias: true,
       alpha: true,
       powerPreference: "high-performance",
     });
+    if (!webglRenderer) {
+      setShowFallback(true);
+      return;
+    }
+    const renderer: THREE.WebGLRenderer = webglRenderer;
     renderer.setSize(container.clientWidth, container.clientHeight);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     container.appendChild(renderer.domElement);
@@ -224,7 +231,46 @@ export function SpatialDefectCanvas() {
     <div
       ref={containerRef}
       className="w-full h-full min-h-[420px] lg:min-h-[540px] relative pointer-events-auto"
-      aria-hidden="true"
-    />
+      aria-hidden={showFallback ? undefined : true}
+      aria-label={showFallback ? "Building defect map visualization" : undefined}
+    >
+      {showFallback && (
+        <div
+          className="absolute inset-0 overflow-hidden rounded-3xl border border-cyan-500/20 bg-gray-950"
+          style={{
+            backgroundImage:
+              "linear-gradient(rgba(34,211,238,.12) 1px, transparent 1px), linear-gradient(90deg, rgba(34,211,238,.12) 1px, transparent 1px)",
+            backgroundSize: "32px 32px",
+          }}
+        >
+          <div className="absolute inset-[16%] border border-cyan-300/40 [clip-path:polygon(50%_0,100%_28%,100%_100%,0_100%,0_28%)]" />
+          {SAMPLE_PINS.map((pin) => (
+            <span
+              key={pin.id}
+              className="absolute rounded-full border-2 border-gray-950 shadow-[0_0_24px_currentColor]"
+              style={{
+                left: `${50 + pin.x * 6}%`,
+                top: `${50 - pin.y * 7}%`,
+                width: 14,
+                height: 14,
+                color:
+                  pin.severity === "URGENT"
+                    ? "#fb7185"
+                    : pin.severity === "SAFETY"
+                    ? "#fb923c"
+                    : pin.severity === "MODERATE"
+                    ? "#fde047"
+                    : "#67e8f9",
+                backgroundColor: "currentColor",
+              }}
+              title={`${pin.severity}: ${pin.label}`}
+            />
+          ))}
+          <div className="absolute inset-x-0 bottom-8 text-center text-[11px] font-mono uppercase tracking-[0.28em] text-cyan-200/70">
+            Spatial defect map
+          </div>
+        </div>
+      )}
+    </div>
   );
 }

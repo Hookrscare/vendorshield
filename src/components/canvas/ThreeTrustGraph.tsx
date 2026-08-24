@@ -1,10 +1,12 @@
 "use client";
 
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
+import { createWebGLRendererOrNull } from "@/lib/webgl";
 
 export function ThreeTrustGraph() {
   const containerRef = useRef<HTMLDivElement>(null);
+  const [showFallback, setShowFallback] = useState(false);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -25,11 +27,16 @@ export function ThreeTrustGraph() {
     camera.position.z = 24;
 
     // 2. WebGL Renderer with High-Performance Alpha Canvas
-    const renderer = new THREE.WebGLRenderer({
+    const webglRenderer = createWebGLRendererOrNull({
       antialias: true,
       alpha: true,
       powerPreference: "high-performance",
     });
+    if (!webglRenderer) {
+      setShowFallback(true);
+      return;
+    }
+    const renderer: THREE.WebGLRenderer = webglRenderer;
     renderer.setSize(container.clientWidth, container.clientHeight);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     container.appendChild(renderer.domElement);
@@ -232,7 +239,30 @@ export function ThreeTrustGraph() {
     <div
       ref={containerRef}
       className="w-full h-full min-h-[420px] lg:min-h-[580px] relative pointer-events-auto"
-      aria-hidden="true"
-    />
+      aria-hidden={showFallback ? undefined : true}
+      aria-label={showFallback ? "Cryptographic trust network visualization" : undefined}
+    >
+      {showFallback && (
+        <div className="absolute inset-0 overflow-hidden rounded-3xl border border-cyan-500/20 bg-gradient-to-br from-blue-950/50 via-gray-950 to-emerald-950/30">
+          <div className="absolute inset-10 rounded-full border border-cyan-400/20" />
+          <div className="absolute inset-20 rounded-full border border-blue-400/20" />
+          <div className="absolute left-1/2 top-1/2 h-32 w-32 -translate-x-1/2 -translate-y-1/2 rotate-45 border border-cyan-300/50 bg-cyan-500/10 shadow-[0_0_80px_rgba(34,211,238,0.2)]" />
+          {[
+            "left-[18%] top-[28%]",
+            "right-[16%] top-[22%]",
+            "left-[24%] bottom-[20%]",
+            "right-[22%] bottom-[28%]",
+          ].map((position) => (
+            <span
+              key={position}
+              className={`absolute ${position} h-3 w-3 rounded-full bg-cyan-300 shadow-[0_0_20px_rgba(103,232,249,0.9)]`}
+            />
+          ))}
+          <div className="absolute inset-x-0 bottom-8 text-center text-[11px] font-mono uppercase tracking-[0.28em] text-cyan-200/70">
+            Verified trust network
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
