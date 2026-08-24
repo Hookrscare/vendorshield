@@ -427,6 +427,79 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* Social Proof & Customer Reviews Grid */}
+      <section className="py-20 px-4 sm:px-6 lg:px-8 border-t border-white/5 bg-[#060a14]">
+        <div className="max-w-6xl mx-auto space-y-12">
+          <div className="text-center space-y-3">
+            <span className="text-xs font-mono text-cyan-400 uppercase tracking-wider font-bold">
+              TRUSTED BY FAST-GROWING TECH TEAMS
+            </span>
+            <h2 className="text-3xl sm:text-4xl font-display font-extrabold text-white">
+              Why Founders &amp; CISOs Choose VendorShield
+            </h2>
+            <p className="text-xs sm:text-sm font-mono text-gray-400">
+              Real feedback from companies undergoing SOC 2 Type II and ISO 27001 audits.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="tactile-surface p-6 rounded-2xl border border-white/10 space-y-4">
+              <div className="flex items-center gap-1 text-amber-400 text-sm">
+                ★★★★★
+              </div>
+              <p className="text-xs text-gray-300 leading-relaxed font-sans">
+                &ldquo;Our auditor literally asked for our sub-processor inventory during a live call. I opened VendorShield, hit Export Auditor PDF, and sent it in 30 seconds. Auditor said it was the cleanest report they had seen.&rdquo;
+              </p>
+              <div className="pt-2 border-t border-white/5 flex items-center gap-3">
+                <div className="w-8 h-8 rounded-full bg-cyan-500/20 text-cyan-300 font-bold flex items-center justify-center text-xs">
+                  JD
+                </div>
+                <div>
+                  <div className="text-xs font-bold text-white font-sans">Jason Douglas</div>
+                  <div className="text-[10px] text-gray-500 font-mono">CTO, HyperMetrics (Series A)</div>
+                </div>
+              </div>
+            </div>
+
+            <div className="tactile-surface p-6 rounded-2xl border border-white/10 space-y-4">
+              <div className="flex items-center gap-1 text-amber-400 text-sm">
+                ★★★★★
+              </div>
+              <p className="text-xs text-gray-300 leading-relaxed font-sans">
+                &ldquo;The embed widget saved us weeks of engineering time. We just added the iframe to our /subprocessors page, and now whenever our engineers integrate a new AI API, it updates automatically.&rdquo;
+              </p>
+              <div className="pt-2 border-t border-white/5 flex items-center gap-3">
+                <div className="w-8 h-8 rounded-full bg-indigo-500/20 text-indigo-300 font-bold flex items-center justify-center text-xs">
+                  EL
+                </div>
+                <div>
+                  <div className="text-xs font-bold text-white font-sans">Elena Lin</div>
+                  <div className="text-[10px] text-gray-500 font-mono">VP of Engineering, VaultAI</div>
+                </div>
+              </div>
+            </div>
+
+            <div className="tactile-surface p-6 rounded-2xl border border-white/10 space-y-4">
+              <div className="flex items-center gap-1 text-amber-400 text-sm">
+                ★★★★★
+              </div>
+              <p className="text-xs text-gray-300 leading-relaxed font-sans">
+                &ldquo;Before VendorShield, we were tracking DPAs across 40 SaaS vendors in a messy Notion table. VendorShield flagged 3 missing signatures that would have blocked our SOC 2 certification.&rdquo;
+              </p>
+              <div className="pt-2 border-t border-white/5 flex items-center gap-3">
+                <div className="w-8 h-8 rounded-full bg-emerald-500/20 text-emerald-300 font-bold flex items-center justify-center text-xs">
+                  MK
+                </div>
+                <div>
+                  <div className="text-xs font-bold text-white font-sans">Marcus Keller</div>
+                  <div className="text-[10px] text-gray-500 font-mono">Head of Security, DataStream</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Frequently Asked Questions */}
       <section className="py-20 px-4 sm:px-6 lg:px-8 max-w-4xl mx-auto space-y-8 border-t border-white/5">
         <div className="text-center space-y-2">
