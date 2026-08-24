@@ -44,6 +44,10 @@ export async function POST(request: NextRequest) {
     const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
     const origin = getCheckoutOrigin(request);
     const hasConfiguredPrice = !tier.priceId.endsWith("_mock");
+    const successUrl =
+      planId === "inspector-toolkit"
+        ? `${origin}/api/downloads/inspector-toolkit?session_id={CHECKOUT_SESSION_ID}`
+        : `${origin}/dashboard?payment=success&session_id={CHECKOUT_SESSION_ID}`;
 
     if (
       customerEmail !== undefined &&
@@ -68,7 +72,7 @@ export async function POST(request: NextRequest) {
           },
           body: new URLSearchParams({
             mode: tier.interval === "one_time" ? "payment" : "subscription",
-            success_url: `${origin}/dashboard?payment=success&session_id={CHECKOUT_SESSION_ID}`,
+            success_url: successUrl,
             cancel_url: `${origin}/#pricing`,
             ...(customerEmail ? { customer_email: customerEmail } : {}),
             "metadata[planId]": planId,

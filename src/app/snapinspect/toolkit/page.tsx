@@ -6,9 +6,6 @@ import { AccessibleModal } from "@/components/ui/AccessibleModal";
 import Link from "next/link";
 import {
   Briefcase,
-  Download,
-  Copy,
-  Check,
   FileText,
   ShieldCheck,
   ArrowLeft,
@@ -20,7 +17,6 @@ import { CheckoutButton } from "@/components/CheckoutButton";
 
 export default function InspectorToolkitPage() {
   const [selectedCategory, setSelectedCategory] = useState<string>("All");
-  const [copiedId, setCopiedId] = useState<string | null>(null);
   const [activeModalResource, setActiveModalResource] = useState<ToolkitResource | null>(null);
 
   const categories = ["All", "Contract", "Disclaimer", "Pricing", "Notion", "Email Template"];
@@ -28,23 +24,6 @@ export default function InspectorToolkitPage() {
   const filtered = INSPECTOR_TOOLKIT_RESOURCES.filter(
     (item) => selectedCategory === "All" || item.category === selectedCategory
   );
-
-  const handleCopy = (content: string, id: string) => {
-    navigator.clipboard.writeText(content);
-    setCopiedId(id);
-    setTimeout(() => setCopiedId(null), 3000);
-  };
-
-  const handleDownloadFile = (resource: ToolkitResource) => {
-    const element = document.createElement("a");
-    const file = new Blob([resource.content], { type: "text/plain" });
-    element.href = URL.createObjectURL(file);
-    element.download = resource.filename;
-    document.body.appendChild(element);
-    element.click();
-    document.body.removeChild(element);
-    URL.revokeObjectURL(element.href);
-  };
 
   return (
     <div className="min-h-screen bg-gray-950 text-gray-100 py-12 px-4 sm:px-6 lg:px-8">
@@ -100,30 +79,24 @@ export default function InspectorToolkitPage() {
             </div>
             <div className="flex items-center gap-1.5">
               <Sparkles className="w-4 h-4 text-blue-400" />
-              <span>100% Free with SnapInspect AI</span>
+              <span>Instant download after secure checkout</span>
             </div>
           </div>
 
-          {/* Action Download & Purchase Buttons */}
+          {/* Secure purchase action */}
           <div className="pt-4 flex flex-col sm:flex-row items-center gap-3">
-            <a
-              href="/downloads/inspector-business-toolkit-2026.zip"
-              download
-              className="w-full sm:w-auto px-6 py-3 bg-amber-400 hover:bg-amber-300 text-gray-950 font-mono font-bold text-xs rounded-xl shadow-lg shadow-amber-500/20 transition-all flex items-center justify-center gap-2"
-            >
-              <Download className="w-4 h-4" />
-              <span>Download Complete .ZIP Bundle</span>
-            </a>
-
             <div className="w-full sm:w-auto">
               <CheckoutButton
                 planId="inspector-toolkit"
-                className="px-6 py-3 bg-gray-900 hover:bg-gray-800 text-amber-300 border border-amber-500/40 font-mono font-bold text-xs rounded-xl transition-colors text-center"
+                className="px-6 py-3 bg-amber-400 hover:bg-amber-300 text-gray-950 font-mono font-bold text-xs rounded-xl shadow-lg shadow-amber-500/20 transition-all text-center"
               >
                 <Package className="w-4 h-4" />
-                <span>Buy Full License ($49 Once)</span>
+                <span>Buy &amp; Download Securely ($49 Once)</span>
               </CheckoutButton>
             </div>
+            <span className="text-[11px] text-gray-500 font-mono">
+              Payment verified by Stripe before download
+            </span>
           </div>
         </div>
 
@@ -171,9 +144,9 @@ export default function InspectorToolkitPage() {
                 </p>
 
                 <div className="p-3 bg-gray-950 border border-gray-800 rounded-xl text-xs font-mono text-gray-400 max-h-24 overflow-hidden relative">
-                  <pre className="text-[10px] overflow-hidden whitespace-pre-wrap">
-                    {resource.content.slice(0, 180)}...
-                  </pre>
+                  <p className="text-[10px] overflow-hidden leading-relaxed">
+                    {resource.preview}
+                  </p>
                   <div className="absolute inset-x-0 bottom-0 h-8 bg-gradient-to-t from-gray-950 to-transparent pointer-events-none" />
                 </div>
               </div>
@@ -185,30 +158,11 @@ export default function InspectorToolkitPage() {
                   className="text-xs text-amber-400 hover:text-amber-300 font-semibold flex items-center gap-1"
                 >
                   <FileText className="w-3.5 h-3.5" />
-                  Preview &amp; View Full
+                  View Details
                 </button>
-
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => handleCopy(resource.content, resource.id)}
-                    className="p-2 bg-gray-800 hover:bg-gray-700 text-gray-300 hover:text-white rounded-lg text-xs transition-colors"
-                    title="Copy to clipboard"
-                  >
-                    {copiedId === resource.id ? (
-                      <Check className="w-3.5 h-3.5 text-emerald-400" />
-                    ) : (
-                      <Copy className="w-3.5 h-3.5" />
-                    )}
-                  </button>
-
-                  <button
-                    onClick={() => handleDownloadFile(resource)}
-                    className="px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-gray-950 font-bold text-xs rounded-lg transition-colors flex items-center gap-1.5"
-                  >
-                    <Download className="w-3.5 h-3.5" />
-                    Download
-                  </button>
-                </div>
+                <span className="px-3 py-1.5 bg-gray-800 text-amber-300 font-bold text-xs rounded-lg">
+                  Included in bundle
+                </span>
               </div>
             </div>
           ))}
@@ -221,33 +175,29 @@ export default function InspectorToolkitPage() {
           maxWidth="max-w-3xl"
         >
           {activeModalResource && (
-            <div className="max-h-[70vh] overflow-hidden flex flex-col">
+            <div className="flex flex-col">
               <p className="pb-3 text-xs text-gray-400">{activeModalResource.badge}</p>
-              <div className="p-4 overflow-y-auto flex-1 bg-gray-950/80 rounded-xl border border-gray-800">
-                <pre className="text-xs text-gray-300 font-mono whitespace-pre-wrap leading-relaxed">
-                  {activeModalResource.content}
-                </pre>
+              <div className="p-4 bg-gray-950/80 rounded-xl border border-gray-800 space-y-3">
+                <p className="text-sm text-gray-300 leading-relaxed">
+                  {activeModalResource.description}
+                </p>
+                <p className="text-xs text-gray-400 font-mono leading-relaxed">
+                  {activeModalResource.preview}
+                </p>
               </div>
 
               <div className="pt-4 flex flex-col sm:flex-row gap-3 sm:justify-between sm:items-center">
                 <span className="text-xs text-gray-500">
                   Filename: {activeModalResource.filename}
                 </span>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => handleCopy(activeModalResource.content, "modal")}
-                    className="px-3.5 py-2 bg-gray-800 hover:bg-gray-700 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5"
+                <div className="w-full sm:w-auto">
+                  <CheckoutButton
+                    planId="inspector-toolkit"
+                    className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-gray-950 font-bold rounded-xl text-xs"
                   >
-                    {copiedId === "modal" ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-                    Copy Text
-                  </button>
-                  <button
-                    onClick={() => handleDownloadFile(activeModalResource)}
-                    className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-gray-950 font-bold rounded-xl text-xs flex items-center gap-1.5"
-                  >
-                    <Download className="w-3.5 h-3.5" />
-                    Download File
-                  </button>
+                    <Package className="w-3.5 h-3.5" />
+                    Buy Bundle ($49)
+                  </CheckoutButton>
                 </div>
               </div>
             </div>
