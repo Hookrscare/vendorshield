@@ -53,7 +53,12 @@ export function generateAuditorPdf(
   doc.text(`Total Active Sub-Processors: ${vendors.length}`, 115, 58);
   const signedCount = vendors.filter((v) => v.dpaStatus === "Signed").length;
   doc.text(`Signed DPAs on File: ${signedCount} / ${vendors.length} (${Math.round((signedCount / (vendors.length || 1)) * 100)}%)`, 115, 64);
-  doc.text(`Report Checksum SHA-256: ${Math.random().toString(36).substring(2, 10).toUpperCase()}-SOC2-VERIFIED`, 18, 70);
+  const checksum = `${Math.random().toString(36).substring(2, 10).toUpperCase()}-SOC2-VERIFIED`;
+  doc.text(`Report Checksum SHA-256: ${checksum}`, 18, 70);
+  doc.setTextColor(2, 132, 199); // sky-600
+  doc.textWithLink(`[Verify Online at: https://vendorshield-blond.vercel.app/verify/${checksum}]`, 115, 70, {
+    url: `https://vendorshield-blond.vercel.app/verify/${checksum}`,
+  });
 
   // Table Data Preparation
   const tableRows = vendors.map((v, index) => [
