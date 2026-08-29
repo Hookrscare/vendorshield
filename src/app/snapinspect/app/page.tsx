@@ -203,11 +203,12 @@ export default function SnapInspectAppPage() {
             </div>
 
             <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 min-w-0">
                 <select
+                  aria-label="Active inspection"
                   value={activeInspectionId}
                   onChange={(e) => setActiveInspectionId(e.target.value)}
-                  className="bg-transparent text-sm sm:text-base font-bold text-white focus:outline-none cursor-pointer truncate max-w-[240px] sm:max-w-xs"
+                  className="min-w-0 flex-1 sm:flex-none bg-transparent text-sm sm:text-base font-bold text-white focus:outline-none cursor-pointer truncate sm:max-w-xs"
                 >
                   {inspections.map((insp) => (
                     <option key={insp.id} value={insp.id} className="bg-gray-900 text-white">
