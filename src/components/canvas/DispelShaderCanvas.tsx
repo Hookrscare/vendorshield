@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { LensFilterMode } from "@/lib/dispel/types";
+import { createWebGLRendererOrNull, hasWebGLSupport } from "@/lib/webgl";
 
 interface DispelShaderCanvasProps {
   filterMode: LensFilterMode;
@@ -103,6 +104,7 @@ export function DispelShaderCanvas({
 }: DispelShaderCanvasProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const materialRef = useRef<THREE.ShaderMaterial | null>(null);
+  const [showFallback, setShowFallback] = useState(false);
   const initialFilterModeRef = useRef(filterMode);
   const initialSyntheticProbabilityRef = useRef(syntheticProbability);
 
@@ -116,6 +118,10 @@ export function DispelShaderCanvas({
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
+    if (!hasWebGLSupport()) {
+      setShowFallback(true);
+      return;
+    }
 
     const prefersReducedMotion = window.matchMedia(
       "(prefers-reduced-motion: reduce)"
@@ -126,11 +132,16 @@ export function DispelShaderCanvas({
     const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
 
     // 2. High-Performance WebGL Renderer
-    const renderer = new THREE.WebGLRenderer({
+    const webglRenderer = createWebGLRendererOrNull({
       antialias: true,
       alpha: true,
       powerPreference: "high-performance",
     });
+    if (!webglRenderer) {
+      setShowFallback(true);
+      return;
+    }
+    const renderer: THREE.WebGLRenderer = webglRenderer;
     renderer.setSize(container.clientWidth, container.clientHeight);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     container.appendChild(renderer.domElement);
@@ -228,6 +239,13 @@ export function DispelShaderCanvas({
       ref={containerRef}
       className="w-full h-full absolute inset-0 rounded-2xl overflow-hidden pointer-events-none"
       aria-hidden="true"
-    />
+    >
+      {showFallback && (
+        <div
+          data-testid="dispel-shader-fallback"
+          className="absolute inset-0 bg-[radial-gradient(circle_at_50%_40%,rgba(6,182,212,0.18),transparent_52%),linear-gradient(135deg,rgba(8,47,73,0.35),rgba(2,6,23,0.9))]"
+        />
+      )}
+    </div>
   );
 }
