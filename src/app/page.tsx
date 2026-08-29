@@ -517,6 +517,8 @@ export default function LandingPage() {
             >
               <button
                 onClick={() => setOpenFaq(openFaq === idx ? null : idx)}
+                aria-expanded={openFaq === idx}
+                aria-controls={`faq-answer-${idx}`}
                 className="w-full p-5 text-left flex items-center justify-between gap-4 text-sm font-display font-bold text-white"
               >
                 <span>{faq.q}</span>
@@ -527,7 +529,11 @@ export default function LandingPage() {
                 )}
               </button>
               {openFaq === idx && (
-                <div className="p-5 pt-0 text-xs sm:text-sm font-sans text-gray-400 leading-relaxed border-t border-white/5">
+                <div
+                  id={`faq-answer-${idx}`}
+                  role="region"
+                  className="p-5 pt-0 text-xs sm:text-sm font-sans text-gray-400 leading-relaxed border-t border-white/5"
+                >
                   {faq.a}
                 </div>
               )}

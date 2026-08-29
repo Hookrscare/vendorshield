@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { DefectItem, DefectSeverity } from "@/lib/snapinspect/types";
 import { TRADE_TEMPLATES } from "@/lib/snapinspect/templates";
 import { parseInspectorVoiceTranscript } from "@/lib/snapinspect/voice-parser";
@@ -51,6 +51,51 @@ export function DefectModal({
   const [estimatedCost, setEstimatedCost] = useState(initialDefect?.estimatedCost || "");
   const [photos, setPhotos] = useState(initialDefect?.photos || []);
   const [showVoiceRecorder, setShowVoiceRecorder] = useState(false);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const previousFocusRef = useRef<HTMLElement | null>(null);
+  const titleId = useId();
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    previousFocusRef.current = document.activeElement as HTMLElement;
+    const dialog = dialogRef.current;
+    const getFocusable = () =>
+      dialog?.querySelectorAll<HTMLElement>(
+        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+      );
+    getFocusable()?.[0]?.focus();
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        onClose();
+        return;
+      }
+
+      const focusable = getFocusable();
+      if (event.key !== "Tab" || !focusable?.length) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+      document.body.style.overflow = originalOverflow;
+      previousFocusRef.current?.focus();
+    };
+  }, [isOpen, onClose]);
 
   if (!isOpen) return null;
 
@@ -122,12 +167,20 @@ export function DefectModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm overflow-y-auto">
-      <div className="bg-gray-900 border border-gray-800 rounded-3xl w-full max-w-2xl my-8 overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby={titleId}
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm overflow-y-auto"
+      onClick={(event) => {
+        if (event.target === event.currentTarget) onClose();
+      }}
+    >
+      <div ref={dialogRef} className="bg-gray-900 border border-gray-800 rounded-3xl w-full max-w-2xl my-8 overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
         {/* Header */}
         <div className="p-6 border-b border-gray-800 flex items-center justify-between bg-gray-950/60 sticky top-0 z-10">
           <div>
-            <h3 className="text-xl font-bold text-white flex items-center gap-2">
+            <h3 id={titleId} className="text-xl font-bold text-white flex items-center gap-2">
               <span>{initialDefect ? "Edit Defect Finding" : "Log Inspection Defect"}</span>
               <span className="text-xs font-semibold px-2 py-0.5 bg-red-500/10 text-red-400 border border-red-500/20 rounded-full">
                 AI Voice Enabled
@@ -139,6 +192,7 @@ export function DefectModal({
           </div>
           <button
             onClick={onClose}
+            aria-label="Close defect dialog"
             className="p-2 text-gray-400 hover:text-white rounded-xl hover:bg-gray-800 transition-colors"
           >
             <X className="w-5 h-5" />
@@ -173,7 +227,11 @@ export function DefectModal({
             <label className="text-xs font-bold text-gray-300 uppercase tracking-wider">
               Severity Tier <span className="text-red-400">*</span>
             </label>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            <div
+              role="group"
+              aria-label="Severity tier"
+              className="grid grid-cols-2 sm:grid-cols-4 gap-2"
+            >
               {(
                 [
                   "Safety Hazard",
@@ -190,6 +248,7 @@ export function DefectModal({
                     key={sev}
                     type="button"
                     onClick={() => setSeverity(sev)}
+                    aria-pressed={isSelected}
                     className={`p-3 rounded-2xl border text-left flex flex-col justify-between transition-all ${
                       isSelected
                         ? `${config.bg} ${config.border} ring-2 ring-blue-500/50`
@@ -213,11 +272,12 @@ export function DefectModal({
           {/* Title & Category Row */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <label className="text-xs font-bold text-gray-300 uppercase tracking-wider flex items-center gap-1">
+              <label htmlFor="defect-title" className="text-xs font-bold text-gray-300 uppercase tracking-wider flex items-center gap-1">
                 <Tag className="w-3.5 h-3.5 text-blue-400" />
                 Defect Title <span className="text-red-400">*</span>
               </label>
               <input
+                id="defect-title"
                 type="text"
                 required
                 value={title}
@@ -228,10 +288,11 @@ export function DefectModal({
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-xs font-bold text-gray-300 uppercase tracking-wider">
+              <label htmlFor="defect-category" className="text-xs font-bold text-gray-300 uppercase tracking-wider">
                 System Category <span className="text-red-400">*</span>
               </label>
               <select
+                id="defect-category"
                 value={category}
                 onChange={(e) => setCategory(e.target.value)}
                 className="w-full bg-gray-950 border border-gray-800 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500"
@@ -249,11 +310,12 @@ export function DefectModal({
           {/* Location & Estimated Cost Row */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <label className="text-xs font-bold text-gray-300 uppercase tracking-wider flex items-center gap-1">
+              <label htmlFor="defect-location" className="text-xs font-bold text-gray-300 uppercase tracking-wider flex items-center gap-1">
                 <MapPin className="w-3.5 h-3.5 text-emerald-400" />
                 Physical Location
               </label>
               <input
+                id="defect-location"
                 type="text"
                 value={location}
                 onChange={(e) => setLocation(e.target.value)}
@@ -263,11 +325,12 @@ export function DefectModal({
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-xs font-bold text-gray-300 uppercase tracking-wider flex items-center gap-1">
+              <label htmlFor="defect-cost" className="text-xs font-bold text-gray-300 uppercase tracking-wider flex items-center gap-1">
                 <DollarSign className="w-3.5 h-3.5 text-amber-400" />
                 Estimated Repair Range
               </label>
               <input
+                id="defect-cost"
                 type="text"
                 value={estimatedCost}
                 onChange={(e) => setEstimatedCost(e.target.value)}
@@ -279,10 +342,11 @@ export function DefectModal({
 
           {/* Description */}
           <div className="space-y-1.5">
-            <label className="text-xs font-bold text-gray-300 uppercase tracking-wider">
+            <label htmlFor="defect-description" className="text-xs font-bold text-gray-300 uppercase tracking-wider">
               Detailed Observation Notes <span className="text-red-400">*</span>
             </label>
             <textarea
+              id="defect-description"
               required
               rows={3}
               value={description}
@@ -294,10 +358,11 @@ export function DefectModal({
 
           {/* Action Recommended */}
           <div className="space-y-1.5">
-            <label className="text-xs font-bold text-gray-300 uppercase tracking-wider">
+            <label htmlFor="defect-action" className="text-xs font-bold text-gray-300 uppercase tracking-wider">
               Recommended Contractor Action
             </label>
             <input
+              id="defect-action"
               type="text"
               value={actionRecommended}
               onChange={(e) => setActionRecommended(e.target.value)}
