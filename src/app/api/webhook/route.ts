@@ -63,6 +63,7 @@ export async function POST(request: NextRequest) {
     }
 
     let event: {
+      id?: string;
       type?: string;
       data?: {
         object?: {
@@ -84,10 +85,11 @@ export async function POST(request: NextRequest) {
       if (!session) {
         return NextResponse.json({ error: "Invalid event payload" }, { status: 400 });
       }
-      const customerEmail = session.customer_email || session.customer_details?.email;
       const plan = session.metadata?.planId || "subscription";
 
-      console.log(`[Stripe Webhook] Payment Successful for ${customerEmail} (Plan: ${plan})`);
+      console.log(
+        `[Stripe Webhook] Checkout completed (Event: ${event.id || "unknown"}, Plan: ${plan})`
+      );
       // This confirms receipt only. Durable, idempotent entitlement provisioning
       // must be implemented before paid access is enforced by the application.
     }
