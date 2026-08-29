@@ -126,7 +126,7 @@ export function generateAuditorPdf(
   });
 
   // Footer Sign-Off on Last Page
-  const finalY = (doc as any).lastAutoTable.finalY || 240;
+  const finalY = (doc as any).lastAutoTable?.finalY ?? 240;
   if (finalY < 250) {
     doc.setFontSize(8);
     doc.setTextColor(100, 116, 139);
@@ -143,8 +143,9 @@ export function generateAuditorPdf(
     doc.text(`Date of Signature: _________________________`, 115, finalY + 28);
   }
 
-  // Save to browser
-  doc.save(`${company.slug}-soc2-subprocessor-register.pdf`);
+  // Save to browser or filesystem
+  const safeSlug = (company.slug || "company").replace(/[^a-zA-Z0-9_-]/g, "_");
+  doc.save(`${safeSlug}-soc2-subprocessor-register.pdf`);
 }
 
 export function generateCsvExport(company: CompanySettings, vendors: SubProcessorVendor[]) {

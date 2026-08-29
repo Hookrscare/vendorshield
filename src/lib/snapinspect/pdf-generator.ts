@@ -173,7 +173,9 @@ export function generateInspectionPdf(inspection: InspectionData) {
   }
 
   // Save report file
-  const filename = `${inspection.id}-${inspection.trade}-inspection-report.pdf`;
+  const safeId = (inspection.id || "inspection").replace(/[^a-zA-Z0-9_-]/g, "_");
+  const safeTrade = (inspection.trade || "residential").replace(/[^a-zA-Z0-9_-]/g, "_");
+  const filename = `${safeId}-${safeTrade}-inspection-report.pdf`;
   doc.save(filename);
 }
 
