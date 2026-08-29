@@ -12,20 +12,26 @@ function getCheckoutOrigin(request: NextRequest): string {
     }
   }
 
-  // 2. Vercel deployment URL
+  // 2. Stable Vercel production URL (avoids checkout redirects to ephemeral deployments)
+  const productionUrl = process.env.VERCEL_PROJECT_PRODUCTION_URL;
+  if (productionUrl) {
+    return `https://${productionUrl}`;
+  }
+
+  // 3. Vercel deployment URL
   const vercelUrl = process.env.VERCEL_URL;
   if (vercelUrl) {
     return `https://${vercelUrl}`;
   }
 
-  // 3. Request forwarded host or host header
+  // 4. Request forwarded host or host header
   const forwardedHost = request.headers.get("x-forwarded-host") || request.headers.get("host");
   const proto = request.headers.get("x-forwarded-proto") || (process.env.NODE_ENV === "production" ? "https" : "http");
   if (forwardedHost) {
     return `${proto}://${forwardedHost}`;
   }
 
-  // 4. Default fallback
+  // 5. Default fallback
   return request.nextUrl.origin || "https://vendorshield-blond.vercel.app";
 }
 

@@ -59,6 +59,31 @@ describe("POST /api/checkout", () => {
     );
   });
 
+  it("prefers the stable Vercel production domain over an ephemeral deployment URL", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("STRIPE_SECRET_KEY", "rk_test_example");
+    vi.stubEnv("NEXT_PUBLIC_APP_URL", "");
+    vi.stubEnv("VERCEL_PROJECT_PRODUCTION_URL", "vendorshield-blond.vercel.app");
+    vi.stubEnv("VERCEL_URL", "vendorshield-preview-abc123.vercel.app");
+    const stripeFetch = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(
+        JSON.stringify({ url: "https://checkout.stripe.com/c/pay/cs_test_example" }),
+        { status: 200, headers: { "content-type": "application/json" } }
+      )
+    );
+
+    await POST(checkoutRequest());
+
+    const requestInit = stripeFetch.mock.calls[0][1];
+    const body = new URLSearchParams(requestInit?.body as string);
+    expect(body.get("success_url")).toBe(
+      "https://vendorshield-blond.vercel.app/dashboard?payment=success&session_id={CHECKOUT_SESSION_ID}"
+    );
+    expect(body.get("cancel_url")).toBe(
+      "https://vendorshield-blond.vercel.app/#pricing"
+    );
+  });
+
   it("keeps simulation available for local development only", async () => {
     vi.stubEnv("NODE_ENV", "development");
     vi.stubEnv("STRIPE_SECRET_KEY", "");
