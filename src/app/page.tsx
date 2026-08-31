@@ -85,7 +85,7 @@ export default function LandingPage() {
 
             {/* CTA Group with Magnetic Physics */}
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 pt-2">
-              <Link href="/dashboard">
+              <Link href="/login">
                 <MagneticButton className="w-full sm:w-auto px-8 py-4 bg-cyan-500 hover:bg-cyan-400 text-gray-950 font-display font-bold text-sm rounded-2xl shadow-xl shadow-cyan-500/20 transition-bespoke flex items-center justify-center gap-2">
                   <span>Launch Your Register Free</span>
                   <ArrowRight className="w-4 h-4" />
