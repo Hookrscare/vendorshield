@@ -12,7 +12,6 @@ import {
   FileCheck,
   Edit2,
   Globe,
-  Lock,
   Eye,
   EyeOff,
 } from "lucide-react";

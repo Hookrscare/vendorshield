@@ -237,16 +237,88 @@ begin
   where organization_id = target_organization_id
   returning * into updated_settings;
 
+  if updated_settings is null then
+    raise exception 'company settings not found';
+  end if;
+
   return updated_settings;
 end;
 $$;
 
--- 7. Grant and revoke definitions
+-- 7. Public-safe register projection for anonymous disclosure pages.
+-- Base tables stay private; only these explicitly selected fields are exposed.
+create or replace function public.get_public_vendor_register(target_slug text)
+returns jsonb
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select jsonb_build_object(
+    'company', jsonb_build_object(
+      'name', organization.name,
+      'slug', organization.slug,
+      'website', settings.website,
+      'privacyEmail', settings.privacy_email,
+      'dpoName', settings.dpo_name,
+      'lastAuditDate', coalesce(settings.last_audit_date::text, '')
+    ),
+    'vendors', vendor_register.items,
+    'totalCount', vendor_register.total_count,
+    'lastUpdated', greatest(
+      organization.updated_at,
+      settings.updated_at,
+      coalesce(vendor_register.last_updated, organization.updated_at)
+    )
+  )
+  from public.organizations organization
+  join public.company_settings settings
+    on settings.organization_id = organization.id
+   and settings.auto_sync_public_page = true
+  cross join lateral (
+    select
+      coalesce(
+        jsonb_agg(
+          jsonb_build_object(
+            'id', vendor.id,
+            'name', vendor.name,
+            'slug', vendor.slug,
+            'description', vendor.description,
+            'category', vendor.category,
+            'website', vendor.website,
+            'logoUrl', vendor.logo_url,
+            'dataProcessed', vendor.data_processed,
+            'dataLocation', vendor.data_location,
+            'dpaUrl', vendor.dpa_url,
+            'dpaStatus', vendor.dpa_status,
+            'certifications', vendor.certifications,
+            'riskLevel', vendor.risk_level,
+            'lastReviewedDate', coalesce(vendor.last_reviewed_date::text, ''),
+            'nextReviewDate', coalesce(vendor.next_review_date::text, ''),
+            'isPublic', true,
+            'addedAt', vendor.created_at
+          ) order by vendor.name, vendor.id
+        ),
+        '[]'::jsonb
+      ) as items,
+      count(*) as total_count,
+      max(vendor.updated_at) as last_updated
+    from public.vendors vendor
+    where vendor.organization_id = organization.id
+      and vendor.is_public = true
+  ) vendor_register
+  where organization.slug = lower(btrim(target_slug))
+  limit 1;
+$$;
+
+-- 8. Grant and revoke definitions
 revoke all on function public.is_organization_writer(uuid) from public;
 revoke all on function public.prevent_vendor_immutable_field_change() from public;
 revoke all on function public.audit_vendor_mutation() from public;
 revoke all on function public.audit_company_settings_mutation() from public;
 revoke all on function public.update_company_settings(uuid, text, text, text, text, text, text, boolean, date) from public;
+revoke all on function public.get_public_vendor_register(text) from public;
 
 grant execute on function public.is_organization_writer(uuid) to authenticated;
 grant execute on function public.update_company_settings(uuid, text, text, text, text, text, text, boolean, date) to authenticated;
+grant execute on function public.get_public_vendor_register(text) to anon, authenticated;

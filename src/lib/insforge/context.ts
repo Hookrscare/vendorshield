@@ -20,7 +20,7 @@ export type ResolveTenantResult =
   | { success: false; status: 401 | 403 | 503; error: string };
 
 export async function resolveTenantContext(
-  _request?: unknown
+  request?: unknown
 ): Promise<ResolveTenantResult> {
   try {
     const client = await createInsForgeServerClient();
@@ -35,12 +35,24 @@ export async function resolveTenantContext(
       };
     }
 
-    const membershipQuery = await client.database
+    let targetOrgId: string | null = null;
+    if (request && typeof request === "object" && "headers" in request) {
+      const headers = (request as { headers: Headers }).headers;
+      if (typeof headers?.get === "function") {
+        targetOrgId = headers.get("x-organization-id");
+      }
+    }
+
+    let query = client.database
       .from("organization_members")
       .select("organization_id, role, organizations(id, name, slug)")
-      .eq("user_id", user.id)
-      .limit(1)
-      .maybeSingle();
+      .eq("user_id", user.id);
+
+    if (targetOrgId && /^[0-9a-f-]{36}$/i.test(targetOrgId)) {
+      query = query.eq("organization_id", targetOrgId);
+    }
+
+    const membershipQuery = await query.limit(1).maybeSingle();
 
     if (membershipQuery.error) {
       return {

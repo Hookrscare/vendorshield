@@ -181,7 +181,7 @@ export default function InspectorToolkitPage() {
                 <p className="text-sm text-gray-300 leading-relaxed">
                   {activeModalResource.description}
                 </p>
-                <p className="text-xs text-gray-400 font-mono leading-relaxed">
+                <p className="text-xs text-gray-400 font-mono leading-relaxed whitespace-pre-wrap">
                   {activeModalResource.preview}
                 </p>
               </div>

@@ -2,7 +2,6 @@ import {
   VendorRow,
   CompanySettingsRow,
   AuditEventRow,
-  OrganizationRow,
 } from "@/lib/insforge/database.types";
 import { TenantAuthContext } from "@/lib/insforge/context";
 import {
@@ -234,7 +233,11 @@ export const InsForgeRepository = {
       .limit(1)
       .maybeSingle();
 
-    if (error || !data) {
+    if (error) {
+      throw new Error(`Failed to load vendor: ${error.message}`);
+    }
+
+    if (!data) {
       return null;
     }
 
@@ -253,7 +256,20 @@ export const InsForgeRepository = {
       throw new Error("Name and Category are required");
     }
 
-    const slug = sanitizeSlug(input.slug || input.name);
+    let slug = sanitizeSlug(input.slug || input.name) || "vendor";
+
+    const existingSlug = await context.client.database
+      .from("vendors")
+      .select("id")
+      .eq("organization_id", context.organization.id)
+      .eq("slug", slug)
+      .limit(1)
+      .maybeSingle();
+
+    if (existingSlug.data) {
+      slug = `${slug}-${Math.random().toString(36).substring(2, 6)}`;
+    }
+
     const dataProcessed = Array.isArray(input.dataProcessed)
       ? input.dataProcessed
       : typeof input.dataProcessed === "string"
@@ -263,7 +279,7 @@ export const InsForgeRepository = {
     const insertPayload = {
       organization_id: context.organization.id,
       name: input.name.trim(),
-      slug: slug || "vendor",
+      slug,
       description: input.description?.trim() || "",
       category: input.category,
       website: input.website?.trim() || "",
@@ -347,7 +363,11 @@ export const InsForgeRepository = {
       .select(VENDOR_COLUMNS)
       .maybeSingle();
 
-    if (error || !data) {
+    if (error) {
+      throw new Error(`Failed to update vendor: ${error.message}`);
+    }
+
+    if (!data) {
       return null;
     }
 
@@ -370,7 +390,11 @@ export const InsForgeRepository = {
       .select("id")
       .maybeSingle();
 
-    if (error || !data) {
+    if (error) {
+      throw new Error(`Failed to delete vendor: ${error.message}`);
+    }
+
+    if (!data) {
       return false;
     }
 
@@ -395,6 +419,13 @@ export const InsForgeRepository = {
         .limit(50),
     ]);
 
+    if (settingsRes.error) {
+      throw new Error(`Failed to load company settings: ${settingsRes.error.message}`);
+    }
+    if (logsRes.error) {
+      throw new Error(`Failed to load audit events: ${logsRes.error.message}`);
+    }
+
     const company = mapCompanySettingsRow(
       settingsRes.data as unknown as CompanySettingsRow | null,
       context.organization.name,
@@ -417,45 +448,30 @@ export const InsForgeRepository = {
       );
     }
 
-    if (input.name && input.name.trim()) {
-      const trimmedName = input.name.trim();
-      await context.client.database
-        .from("organizations")
-        .update({ name: trimmedName })
-        .eq("id", context.organization.id);
-      context.organization.name = trimmedName;
+    const normalizedName = input.name?.trim() || null;
+    const { data, error } = await context.client.database.rpc("update_company_settings", {
+      target_organization_id: context.organization.id,
+      new_name: normalizedName,
+      new_website: input.website?.trim() ?? null,
+      new_privacy_email: input.privacyEmail?.trim() ?? null,
+      new_dpo_name: input.dpoName?.trim() ?? null,
+      new_notification_email: input.notificationEmail?.trim() ?? null,
+      new_theme: input.theme ?? null,
+      new_auto_sync_public_page: input.autoSyncPublicPage ?? null,
+      new_last_audit_date: input.lastAuditDate ?? null,
+    });
+
+    const returnedRow = Array.isArray(data) ? data[0] : data;
+    if (error || !returnedRow) {
+      throw new Error(
+        `Failed to update company settings: ${error?.message || "No settings returned"}`
+      );
     }
 
-    const settingsUpdate: Record<string, unknown> = {};
-    if (input.website !== undefined) settingsUpdate.website = input.website.trim();
-    if (input.privacyEmail !== undefined) {
-      settingsUpdate.privacy_email = input.privacyEmail.trim();
-    }
-    if (input.dpoName !== undefined) settingsUpdate.dpo_name = input.dpoName.trim();
-    if (input.notificationEmail !== undefined) {
-      settingsUpdate.notification_email = input.notificationEmail.trim();
-    }
-    if (input.theme !== undefined) settingsUpdate.theme = input.theme;
-    if (input.autoSyncPublicPage !== undefined) {
-      settingsUpdate.auto_sync_public_page = input.autoSyncPublicPage;
-    }
-    if (input.lastAuditDate !== undefined) {
-      settingsUpdate.last_audit_date = input.lastAuditDate;
-    }
-
-    const { data, error } = await context.client.database
-      .from("company_settings")
-      .update(settingsUpdate)
-      .eq("organization_id", context.organization.id)
-      .select(COMPANY_COLUMNS)
-      .maybeSingle();
-
-    if (error) {
-      throw new Error(`Failed to update company settings: ${error.message}`);
-    }
+    if (normalizedName) context.organization.name = normalizedName;
 
     return mapCompanySettingsRow(
-      data as unknown as CompanySettingsRow | null,
+      returnedRow as unknown as CompanySettingsRow,
       context.organization.name,
       context.organization.slug
     );
@@ -495,53 +511,31 @@ export const InsForgeRepository = {
       };
     }
 
-    // Server-side lookup for real organizations
+    // Public data comes from a narrow SECURITY DEFINER projection; base tables stay private.
     const client = await createInsForgeServerClient();
-    const orgQuery = await client.database
-      .from("organizations")
-      .select("id, name, slug")
-      .eq("slug", normalizedSlug)
-      .limit(1)
-      .maybeSingle();
+    const { data, error } = await client.database.rpc("get_public_vendor_register", {
+      target_slug: normalizedSlug,
+    });
 
-    if (orgQuery.error || !orgQuery.data) {
+    if (error) {
+      throw new Error(`Failed to load public register: ${error.message}`);
+    }
+    if (!data) {
       return null;
     }
 
-    const org = orgQuery.data as unknown as OrganizationRow;
-
-    const [settingsRes, vendorsRes] = await Promise.all([
-      client.database
-        .from("company_settings")
-        .select(COMPANY_COLUMNS)
-        .eq("organization_id", org.id)
-        .limit(1)
-        .maybeSingle(),
-      client.database
-        .from("vendors")
-        .select(VENDOR_COLUMNS)
-        .eq("organization_id", org.id)
-        .eq("is_public", true)
-        .order("name", { ascending: true })
-        .limit(200),
-    ]);
-
-    const settings = settingsRes.data as unknown as CompanySettingsRow | null;
-    const vendorRows = (vendorsRes.data as unknown as VendorRow[]) || [];
-    const vendors = vendorRows.map(mapVendorRowToSubProcessorVendor);
-
-    return {
+    return data as unknown as {
       company: {
-        name: org.name,
-        slug: org.slug,
-        website: settings?.website || "",
-        privacyEmail: settings?.privacy_email || "",
-        dpoName: settings?.dpo_name || "",
-        lastAuditDate: settings?.last_audit_date || "",
-      },
-      vendors,
-      totalCount: vendors.length,
-      lastUpdated: new Date().toISOString(),
+        name: string;
+        slug: string;
+        website: string;
+        privacyEmail: string;
+        dpoName: string;
+        lastAuditDate: string;
+      };
+      vendors: SubProcessorVendor[];
+      totalCount: number;
+      lastUpdated: string;
     };
   },
 };

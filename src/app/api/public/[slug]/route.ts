@@ -16,10 +16,17 @@ export async function GET(
       );
     }
 
-    return NextResponse.json({
-      success: true,
-      data: result,
-    });
+    return NextResponse.json(
+      {
+        success: true,
+        data: result,
+      },
+      {
+        headers: {
+          "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300",
+        },
+      }
+    );
   } catch (error) {
     return NextResponse.json(
       { success: false, error: "Failed to fetch public disclosure register" },

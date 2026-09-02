@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   mapVendorRowToSubProcessorVendor,
   mapCompanySettingsRow,
@@ -146,5 +146,50 @@ describe("InsForgeRepository and Mappers", () => {
         website: "https://newsite.com",
       })
     ).rejects.toThrow(AuthorizationError);
+  });
+
+  it("updates organization name and settings through one atomic RPC", async () => {
+    const rpc = vi.fn().mockResolvedValue({
+      data: {
+        organization_id: "org-1",
+        website: "https://new.example",
+        logo_url: null,
+        privacy_email: "privacy@example.com",
+        dpo_name: "Owner",
+        notification_email: "alerts@example.com",
+        last_audit_date: null,
+        auto_sync_public_page: true,
+        theme: "system",
+        created_at: "2026-01-01T00:00:00Z",
+        updated_at: "2026-09-02T00:00:00Z",
+      },
+      error: null,
+    });
+    const context: TenantAuthContext = {
+      user: { id: "user-owner", email: "owner@example.com" },
+      organization: { id: "org-1", name: "Old Name", slug: "test-org" },
+      role: "owner",
+      client: { database: { rpc } } as any,
+    };
+
+    const updated = await InsForgeRepository.updateCompanySettings(context, {
+      name: "New Name",
+      website: "https://new.example",
+    });
+
+    expect(rpc).toHaveBeenCalledTimes(1);
+    expect(rpc).toHaveBeenCalledWith("update_company_settings", {
+      target_organization_id: "org-1",
+      new_name: "New Name",
+      new_website: "https://new.example",
+      new_privacy_email: null,
+      new_dpo_name: null,
+      new_notification_email: null,
+      new_theme: null,
+      new_auto_sync_public_page: null,
+      new_last_audit_date: null,
+    });
+    expect(updated.name).toBe("New Name");
+    expect(updated.website).toBe("https://new.example");
   });
 });

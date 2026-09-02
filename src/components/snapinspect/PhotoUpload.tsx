@@ -2,11 +2,15 @@
 
 import { useState } from "react";
 import { DefectPhoto } from "@/lib/snapinspect/types";
-import { ImagePlus, Trash2, Camera, Sparkles, Check } from "lucide-react";
+import { ImagePlus, Trash2, Camera, Sparkles } from "lucide-react";
 
 interface PhotoUploadProps {
   photos: DefectPhoto[];
   onChange: (photos: DefectPhoto[]) => void;
+}
+
+function generatePhotoId(): string {
+  return `ph-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
 }
 
 const SAMPLE_PHOTO_CHOICES = [
@@ -42,7 +46,7 @@ export function PhotoUpload({ photos, onChange }: PhotoUploadProps) {
     reader.onload = (event) => {
       const base64 = event.target?.result as string;
       const newPhoto: DefectPhoto = {
-        id: `ph-${Date.now()}`,
+        id: generatePhotoId(),
         url: base64,
         caption: captionInput || file.name.replace(/\.[^/.]+$/, ""),
         annotation: "Field photo capture",
@@ -56,7 +60,7 @@ export function PhotoUpload({ photos, onChange }: PhotoUploadProps) {
 
   const handleAddSample = (sample: typeof SAMPLE_PHOTO_CHOICES[0]) => {
     const newPhoto: DefectPhoto = {
-      id: `ph-${Date.now()}-${Math.random().toString(36).substring(2, 5)}`,
+      id: generatePhotoId(),
       url: sample.url,
       caption: sample.caption,
       annotation: sample.annotation,
