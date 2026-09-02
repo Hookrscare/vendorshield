@@ -8,8 +8,6 @@ import {
   Camera,
   Cpu,
   ChevronDown,
-  Sparkles,
-  ExternalLink,
 } from "lucide-react";
 
 export function PortfolioSwitcher() {

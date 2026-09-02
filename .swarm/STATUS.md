@@ -9,7 +9,7 @@ Antigravity reworked QA-101 on branch `qa-101-nextjs-upgrade`. All production de
 | QA-103 | Real authentication and tenant-isolation architecture | Antigravity | Heavy | DONE | — |
 | QA-104 | Stripe test-to-live readiness audit, with no credential or production mutations | Antigravity | Heavy | DONE | — |
 | QA-105 | Integrated production browser QA and release evidence | Codex verifier | Medium | READY_FOR_VERIFIER | QA-101, QA-102, QA-103, QA-104 |
-| QA-106 | Hardened InsForge persistence cutover and role enforcement | Antigravity | Heavy | READY_FOR_EXTERNAL_AGENT | QA-103, `6c977a0` |
+| QA-106 | Hardened InsForge persistence cutover and role enforcement | Antigravity | Heavy | DONE | QA-103, `6c977a0` |
 
 ## Current Baseline
 

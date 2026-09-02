@@ -163,7 +163,7 @@ export function generateInspectionPdf(inspection: InspectionData) {
   });
 
   // Photo Section / Disclaimers on Subsequent Pages
-  const finalY = (doc as any).lastAutoTable?.finalY || 200;
+  const finalY = (doc as jsPDF & { lastAutoTable?: { finalY?: number } }).lastAutoTable?.finalY || 200;
 
   if (finalY > 220) {
     doc.addPage();

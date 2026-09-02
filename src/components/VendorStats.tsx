@@ -1,7 +1,7 @@
 "use client";
 
 import { SubProcessorVendor } from "@/lib/types";
-import { ShieldCheck, AlertCircle, AlertTriangle, Calendar, Layers } from "lucide-react";
+import { ShieldCheck, AlertCircle, Calendar, Layers } from "lucide-react";
 
 interface VendorStatsProps {
   vendors: SubProcessorVendor[];

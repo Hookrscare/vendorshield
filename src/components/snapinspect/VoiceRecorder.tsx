@@ -10,6 +10,16 @@ interface VoiceRecorderProps {
   isProcessing?: boolean;
 }
 
+interface SpeechRecognitionInstance {
+  continuous: boolean;
+  interimResults: boolean;
+  lang: string;
+  onresult: (event: { results: ArrayLike<ArrayLike<{ transcript: string }>> }) => void;
+  onerror: (err: unknown) => void;
+  start: () => void;
+  stop: () => void;
+}
+
 export function VoiceRecorder({
   onTranscriptionComplete,
   onTranscriptReady,
@@ -18,7 +28,7 @@ export function VoiceRecorder({
   const [isRecording, setIsRecording] = useState(false);
   const [transcript, setTranscript] = useState("");
   const [seconds, setSeconds] = useState(0);
-  const recognitionRef = useRef<any>(null);
+  const recognitionRef = useRef<SpeechRecognitionInstance | null>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
   const notifyComplete = (text: string) => {
@@ -28,15 +38,19 @@ export function VoiceRecorder({
 
   useEffect(() => {
     if (typeof window !== "undefined") {
+      const windowWithSpeech = window as unknown as {
+        SpeechRecognition?: new () => SpeechRecognitionInstance;
+        webkitSpeechRecognition?: new () => SpeechRecognitionInstance;
+      };
       const SpeechRecognition =
-        (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+        windowWithSpeech.SpeechRecognition || windowWithSpeech.webkitSpeechRecognition;
       if (SpeechRecognition) {
         const recognition = new SpeechRecognition();
         recognition.continuous = true;
         recognition.interimResults = true;
         recognition.lang = "en-US";
 
-        recognition.onresult = (event: any) => {
+        recognition.onresult = (event) => {
           let current = "";
           for (let i = 0; i < event.results.length; i++) {
             current += event.results[i][0].transcript;
@@ -44,7 +58,7 @@ export function VoiceRecorder({
           setTranscript(current);
         };
 
-        recognition.onerror = (err: any) => {
+        recognition.onerror = (err) => {
           console.warn("Speech recognition error:", err);
           setIsRecording(false);
         };
@@ -58,7 +72,9 @@ export function VoiceRecorder({
       if (recognitionRef.current) {
         try {
           recognitionRef.current.stop();
-        } catch (e) {}
+        } catch {
+          // ignore
+        }
       }
     };
   }, []);
@@ -94,7 +110,9 @@ export function VoiceRecorder({
     if (recognitionRef.current) {
       try {
         recognitionRef.current.stop();
-      } catch (e) {}
+      } catch {
+        // ignore
+      }
     }
 
     const finalTranscript =
@@ -164,7 +182,7 @@ export function VoiceRecorder({
                 key={i}
                 className="w-1 bg-amber-400 rounded-full transition-all duration-150 animate-pulse"
                 style={{
-                  height: `${Math.max(15, h * Math.random() * 0.9 + 10)}%`,
+                  height: `${Math.max(15, h * (((i + seconds) % 5) * 0.12 + 0.6))}%`,
                   animationDelay: `${i * 60}ms`,
                 }}
               />

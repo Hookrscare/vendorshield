@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { AccessibleModal } from "@/components/ui/AccessibleModal";
-import { Mail, CheckCircle2, Loader2, Send, Building, User, MessageSquare } from "lucide-react";
+import { CheckCircle2, Loader2, Send } from "lucide-react";
 
 interface ContactModalProps {
   isOpen: boolean;
@@ -39,7 +39,7 @@ export function ContactModal({ isOpen, onClose, productName = "VendorShield" }: 
       } else {
         setError(data.error || "Failed to submit. Please try again.");
       }
-    } catch (err) {
+    } catch {
       setError("Network error. Please try again.");
     } finally {
       setSubmitting(false);

@@ -22,6 +22,20 @@ export interface OrganizationMemberRow {
   created_at: string;
 }
 
+export interface CompanySettingsRow {
+  organization_id: string;
+  website: string;
+  logo_url: string | null;
+  privacy_email: string;
+  dpo_name: string;
+  notification_email: string;
+  last_audit_date: string | null;
+  auto_sync_public_page: boolean;
+  theme: "light" | "dark" | "system";
+  created_at: string;
+  updated_at: string;
+}
+
 export interface VendorRow {
   id: string;
   organization_id: string;
@@ -44,6 +58,17 @@ export interface VendorRow {
   created_by: string;
   created_at: string;
   updated_at: string;
+}
+
+export interface AuditEventRow {
+  id: string;
+  organization_id: string;
+  actor_user_id: string | null;
+  action: string;
+  entity_type: string;
+  entity_id: string | null;
+  details: Record<string, unknown>;
+  created_at: string;
 }
 
 export interface EntitlementRow {

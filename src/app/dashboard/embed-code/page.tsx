@@ -16,6 +16,7 @@ import {
 
 export default function EmbedCodePage() {
   const [company, setCompany] = useState<CompanySettings | null>(null);
+  const [isDemo, setIsDemo] = useState(true);
   const [copiedType, setCopiedType] = useState<string | null>(null);
   const [theme, setTheme] = useState<"dark" | "light">("dark");
   const [height, setHeight] = useState("650");
@@ -25,7 +26,10 @@ export default function EmbedCodePage() {
     fetch("/api/company")
       .then((res) => res.json())
       .then((data) => {
-        if (data.success) setCompany(data.data.company);
+        if (data.success) {
+          setCompany(data.data.company);
+          if (data.isDemo !== undefined) setIsDemo(data.isDemo);
+        }
       });
   }, []);
 
@@ -74,10 +78,21 @@ export default function EmbedCodePage() {
           <span className="text-gray-200">Public Embed Widget &amp; Integration</span>
         </div>
 
-        <div className="rounded-2xl border border-blue-500/30 bg-blue-500/10 px-5 py-4 text-sm text-blue-100">
-          <strong>Sample integration:</strong> the generated code points to the public
-          ACME demo dataset. Customer-specific widgets require an authenticated account.
-        </div>
+        {isDemo ? (
+          <div className="rounded-2xl border border-blue-500/30 bg-blue-500/10 px-5 py-4 text-sm text-blue-100">
+            <strong>Sample integration:</strong> the generated code points to the public
+            ACME demo dataset. Customer-specific widgets require an authenticated account.
+          </div>
+        ) : (
+          <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-5 py-4 text-sm text-emerald-100 flex items-center gap-2.5">
+            <Sparkles className="w-5 h-5 text-emerald-400 shrink-0" />
+            <span>
+              <strong>Live Workspace Integration:</strong> This widget dynamically displays{" "}
+              <strong>{company?.name || "your organization"}</strong>&apos;s verified public
+              sub-processors. Changes in your dashboard reflect immediately on your live website.
+            </span>
+          </div>
+        )}
 
         {/* Title Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-gray-800">

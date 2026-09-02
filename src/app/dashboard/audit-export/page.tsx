@@ -20,6 +20,7 @@ export default function AuditExportPage() {
   const [vendors, setVendors] = useState<SubProcessorVendor[]>([]);
   const [company, setCompany] = useState<CompanySettings | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isDemo, setIsDemo] = useState(true);
   const [reviewerName, setReviewerName] = useState("Sarah Jenkins (CISO)");
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
 
@@ -32,9 +33,13 @@ export default function AuditExportPage() {
         ]);
         const vData = await vRes.json();
         const cData = await cRes.json();
-        if (vData.success) setVendors(vData.data);
+        if (vData.success) {
+          setVendors(vData.data);
+          if (vData.isDemo !== undefined) setIsDemo(vData.isDemo);
+        }
         if (cData.success) {
           setCompany(cData.data.company);
+          if (cData.isDemo !== undefined) setIsDemo(cData.isDemo);
           setReviewerName(cData.data.company.dpoName || "CISO / Compliance Officer");
         }
       } catch (e) {
@@ -106,11 +111,22 @@ export default function AuditExportPage() {
           <span className="text-gray-200">SOC 2 &amp; ISO 27001 Audit Pack</span>
         </div>
 
-        <div className="rounded-2xl border border-blue-500/30 bg-blue-500/10 px-5 py-4 text-sm text-blue-100">
-          <strong>Sample audit pack:</strong> this public page demonstrates export
-          formatting with fictional ACME data. It does not contain customer records
-          or an official compliance attestation.
-        </div>
+        {isDemo ? (
+          <div className="rounded-2xl border border-blue-500/30 bg-blue-500/10 px-5 py-4 text-sm text-blue-100">
+            <strong>Sample audit pack:</strong> this public page demonstrates export
+            formatting with fictional ACME data. It does not contain customer records
+            or an official compliance attestation.
+          </div>
+        ) : (
+          <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-5 py-4 text-sm text-emerald-100 flex items-center gap-2.5">
+            <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
+            <span>
+              <strong>Verified Organization Evidence Vault:</strong> Live audit export compiled from
+              active vendor registers and immutable SOC 2 audit events for{" "}
+              <strong>{company?.name || "your organization"}</strong>.
+            </span>
+          </div>
+        )}
 
         {/* Title Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-gray-800">
@@ -133,7 +149,11 @@ export default function AuditExportPage() {
               className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs sm:text-sm rounded-xl shadow-lg shadow-emerald-600/30 transition-all flex items-center gap-2 hover:scale-[1.02]"
             >
               <Download className="w-4 h-4" />
-              {isGeneratingPdf ? "Generating..." : "Download Sample PDF"}
+              {isGeneratingPdf
+                ? "Generating..."
+                : isDemo
+                ? "Download Sample PDF"
+                : "Download Auditor PDF"}
             </button>
             <button
               onClick={handleDownloadCsv}
@@ -141,7 +161,7 @@ export default function AuditExportPage() {
               className="px-3.5 py-2.5 bg-gray-900 hover:bg-gray-800 border border-gray-800 text-gray-200 font-semibold text-xs sm:text-sm rounded-xl transition-colors flex items-center gap-1.5"
             >
               <FileText className="w-4 h-4 text-blue-400" />
-              Export Sample CSV
+              {isDemo ? "Export Sample CSV" : "Export CSV"}
             </button>
             <button
               onClick={handleDownloadJson}
@@ -149,7 +169,7 @@ export default function AuditExportPage() {
               className="px-3.5 py-2.5 bg-gray-900 hover:bg-gray-800 border border-gray-800 text-gray-200 font-semibold text-xs sm:text-sm rounded-xl transition-colors flex items-center gap-1.5"
             >
               <FileCode className="w-4 h-4 text-purple-400" />
-              Sample JSON
+              {isDemo ? "Sample JSON" : "Export JSON"}
             </button>
           </div>
         </div>

@@ -134,7 +134,7 @@ export function DefectModal({
 
   const severityConfigs: Record<
     DefectSeverity,
-    { label: string; bg: string; text: string; border: string; icon: any }
+    { label: string; bg: string; text: string; border: string; icon: React.ComponentType<{ className?: string }> }
   > = {
     "Safety Hazard": {
       label: "Safety Hazard",

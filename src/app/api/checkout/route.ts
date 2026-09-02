@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { PRICING_TIERS } from "@/lib/pricing";
+import { resolveTenantContext } from "@/lib/insforge/context";
 
 function getCheckoutOrigin(request: NextRequest): string {
   // 1. Configured app URL
@@ -67,6 +68,19 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const tenantResult = await resolveTenantContext(request).catch(() => null);
+    const orgId =
+      tenantResult && tenantResult.success
+        ? tenantResult.context.organization.id
+        : null;
+    const userId =
+      tenantResult && tenantResult.success ? tenantResult.context.user.id : null;
+    const effectiveEmail =
+      customerEmail ||
+      (tenantResult && tenantResult.success
+        ? tenantResult.context.user.email
+        : undefined);
+
     // If Stripe Secret Key is configured, execute official Stripe Checkout
     if (stripeSecretKey) {
       try {
@@ -80,8 +94,10 @@ export async function POST(request: NextRequest) {
             mode: tier.interval === "one_time" ? "payment" : "subscription",
             success_url: successUrl,
             cancel_url: `${origin}/#pricing`,
-            ...(customerEmail ? { customer_email: customerEmail } : {}),
+            ...(effectiveEmail ? { customer_email: effectiveEmail } : {}),
             "metadata[planId]": planId,
+            ...(orgId ? { "metadata[organizationId]": orgId } : {}),
+            ...(userId ? { "metadata[userId]": userId } : {}),
             ...(hasConfiguredPrice
               ? { "line_items[0][price]": tier.priceId }
               : {

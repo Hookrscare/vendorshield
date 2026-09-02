@@ -38,6 +38,7 @@ next-env.d.ts
 .insforge
 .agent
 .agents
+.swarm/rollback/
 .augment
 .claude
 .cline

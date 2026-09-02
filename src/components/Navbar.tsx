@@ -9,11 +9,9 @@ import {
   FileText,
   Code2,
   Sparkles,
-  ExternalLink,
   Camera,
   Mic,
   Briefcase,
-  Layers,
   Cpu,
   Eye,
   Chrome,
@@ -75,6 +73,17 @@ export function Navbar() {
               Extension (MV3)
             </Link>
             <Link
+              href="/tools/deepfake-scanner"
+              className={`px-3 py-2 rounded-md transition-colors flex items-center gap-1.5 ${
+                pathname === "/tools/deepfake-scanner"
+                  ? "bg-gray-800/80 text-white"
+                  : "hover:text-white hover:bg-gray-800/50"
+              }`}
+            >
+              <Cpu className="w-4 h-4 text-emerald-400" />
+              Free Scanner
+            </Link>
+            <Link
               href="/dispel#pricing"
               className="px-3 py-2 rounded-md hover:text-white hover:bg-gray-800/50 transition-colors text-xs text-gray-400 font-mono"
             >
@@ -115,13 +124,24 @@ export function Navbar() {
               }`}
             >
               <Briefcase className="w-4 h-4 text-amber-400" />
-              Inspector Toolkit
+              Toolkit ($49)
+            </Link>
+            <Link
+              href="/tools/inspector-calculator"
+              className={`px-3 py-2 rounded-md transition-colors flex items-center gap-1.5 ${
+                pathname === "/tools/inspector-calculator"
+                  ? "bg-gray-800/80 text-white"
+                  : "hover:text-white hover:bg-gray-800/50"
+              }`}
+            >
+              <Sparkles className="w-4 h-4 text-cyan-400" />
+              Fee Tool
             </Link>
             <Link
               href="/snapinspect#pricing"
               className="px-3 py-2 rounded-md hover:text-white hover:bg-gray-800/50 transition-colors text-xs text-gray-400"
             >
-              Pricing &amp; ROI
+              Pricing
             </Link>
           </nav>
         ) : (
@@ -152,15 +172,26 @@ export function Navbar() {
               Audit Pack
             </Link>
             <Link
-              href="/dashboard/embed-code"
+              href="/tools/widget-generator"
               className={`px-3 py-2 rounded-md transition-colors flex items-center gap-1.5 ${
-                pathname === "/dashboard/embed-code"
+                pathname === "/tools/widget-generator"
                   ? "bg-gray-800/80 text-white"
                   : "hover:text-white hover:bg-gray-800/50"
               }`}
             >
               <Code2 className="w-4 h-4 text-purple-400" />
-              Embed Widget
+              Widget Maker
+            </Link>
+            <Link
+              href="/tools/soc2-readiness"
+              className={`px-3 py-2 rounded-md transition-colors flex items-center gap-1.5 ${
+                pathname === "/tools/soc2-readiness"
+                  ? "bg-gray-800/80 text-white"
+                  : "hover:text-white hover:bg-gray-800/50"
+              }`}
+            >
+              <ShieldCheck className="w-4 h-4 text-teal-400" />
+              SOC 2 Test
             </Link>
             <Link
               href="/directory"
@@ -171,15 +202,7 @@ export function Navbar() {
               }`}
             >
               <Database className="w-4 h-4 text-amber-400" />
-              SaaS Directory
-            </Link>
-            <Link
-              href="/p/acme-saas"
-              target="_blank"
-              className="px-3 py-2 rounded-md text-gray-400 hover:text-white hover:bg-gray-800/50 transition-colors flex items-center gap-1 text-xs"
-            >
-              Live Public Page
-              <ExternalLink className="w-3 h-3" />
+              Directory
             </Link>
           </nav>
         )}
