@@ -1,33 +1,29 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { InsForgeRepository } from "@/lib/insforge/repository";
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ slug: string }> }
 ) {
-  const { slug } = await params;
-  const company = db.getCompany();
-  // Support slug match or default demo slug
-  if (company.slug !== slug && slug !== "demo" && slug !== "acme") {
-    // Return company with the requested slug name for demo versatility
+  try {
+    const { slug } = await params;
+    const result = await InsForgeRepository.getPublicCompanyAndVendors(slug);
+
+    if (!result) {
+      return NextResponse.json(
+        { success: false, error: "Sub-processor register not found" },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json({
+      success: true,
+      data: result,
+    });
+  } catch (error) {
+    return NextResponse.json(
+      { success: false, error: "Failed to fetch public disclosure register" },
+      { status: 500 }
+    );
   }
-
-  const vendors = db.getVendors().filter((v) => v.isPublic);
-
-  return NextResponse.json({
-    success: true,
-    data: {
-      company: {
-        name: company.name,
-        slug: company.slug,
-        website: company.website,
-        privacyEmail: company.privacyEmail,
-        dpoName: company.dpoName,
-        lastAuditDate: company.lastAuditDate,
-      },
-      vendors,
-      totalCount: vendors.length,
-      lastUpdated: new Date().toISOString(),
-    },
-  });
 }

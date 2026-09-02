@@ -15,13 +15,13 @@ import {
   ExternalLink,
   History,
   Building,
-  Sparkles,
-  RefreshCw,
   CheckCircle2,
+  Lock,
 } from "lucide-react";
 
 export default function DashboardPage() {
-  const isReadOnlyDemo = true;
+  const [isDemo, setIsDemo] = useState(true);
+  const [userRole, setUserRole] = useState<string>("viewer");
   const [vendors, setVendors] = useState<SubProcessorVendor[]>([]);
   const [company, setCompany] = useState<CompanySettings | null>(null);
   const [logs, setLogs] = useState<AuditLog[]>([]);
@@ -39,6 +39,10 @@ export default function DashboardPage() {
   const [dpoName, setDpoName] = useState("");
   const [website, setWebsite] = useState("");
 
+  const isReadOnly = isDemo || userRole === "viewer";
+  const canEdit = !isDemo && (userRole === "owner" || userRole === "admin" || userRole === "member");
+  const canAdmin = !isDemo && (userRole === "owner" || userRole === "admin");
+
   const fetchData = async () => {
     try {
       setLoading(true);
@@ -49,7 +53,11 @@ export default function DashboardPage() {
       const vData = await vRes.json();
       const cData = await cRes.json();
 
-      if (vData.success) setVendors(vData.data);
+      if (vData.success) {
+        setVendors(vData.data);
+        if (vData.isDemo !== undefined) setIsDemo(vData.isDemo);
+        if (vData.role) setUserRole(vData.role);
+      }
       if (cData.success) {
         setCompany(cData.data.company);
         setLogs(cData.data.logs || []);
@@ -57,6 +65,8 @@ export default function DashboardPage() {
         setPrivacyEmail(cData.data.company.privacyEmail);
         setDpoName(cData.data.company.dpoName);
         setWebsite(cData.data.company.website);
+        if (cData.isDemo !== undefined) setIsDemo(cData.isDemo);
+        if (cData.role) setUserRole(cData.role);
       }
     } catch (err) {
       console.error("Failed to load dashboard data", err);
@@ -81,6 +91,8 @@ export default function DashboardPage() {
         setVendors([data.data, ...vendors]);
         showNotice(`Added ${newVendor.name} to sub-processor register`);
         fetchData();
+      } else {
+        showNotice(`Error: ${data.error || "Failed to add vendor"}`);
       }
     } catch (err) {
       console.error("Error adding vendor", err);
@@ -99,6 +111,8 @@ export default function DashboardPage() {
         setVendors(vendors.map((v) => (v.id === id ? data.data : v)));
         showNotice(`Updated ${data.data.name} in register`);
         fetchData();
+      } else {
+        showNotice(`Error: ${data.error || "Failed to update vendor"}`);
       }
     } catch (err) {
       console.error("Error updating vendor", err);
@@ -111,8 +125,10 @@ export default function DashboardPage() {
       const data = await res.json();
       if (data.success) {
         setVendors(vendors.filter((v) => v.id !== id));
-        showNotice(`Vendor deleted from register`);
+        showNotice("Vendor deleted from register");
         fetchData();
+      } else {
+        showNotice(`Error: ${data.error || "Failed to delete vendor"}`);
       }
     } catch (err) {
       console.error("Error deleting vendor", err);
@@ -136,6 +152,9 @@ export default function DashboardPage() {
       if (data.success) {
         setCompany(data.data);
         showNotice("Company compliance settings updated");
+        fetchData();
+      } else {
+        showNotice(`Error: ${data.error || "Failed to save settings"}`);
       }
     } catch (err) {
       console.error("Error saving settings", err);
@@ -177,12 +196,22 @@ export default function DashboardPage() {
           <div className="flex flex-wrap items-center gap-2.5">
             <button
               onClick={() => setIsAddOpen(true)}
-              disabled={isReadOnlyDemo}
-              title="Editing is disabled in the public demo"
+              disabled={isReadOnly}
+              title={
+                isDemo
+                  ? "Editing is disabled in the public demo"
+                  : userRole === "viewer"
+                  ? "Viewer role cannot add vendors"
+                  : "Add a new sub-processor"
+              }
               className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs sm:text-sm rounded-xl shadow-lg shadow-blue-600/30 transition-all flex items-center gap-1.5 hover:scale-[1.02] disabled:bg-gray-800 disabled:text-gray-500 disabled:shadow-none disabled:hover:scale-100 disabled:cursor-not-allowed"
             >
               <Plus className="w-4 h-4" />
-              Read-Only Demo
+              {isDemo
+                ? "Read-Only Demo"
+                : userRole === "viewer"
+                ? "Viewer Access"
+                : "Add Sub-Processor"}
             </button>
 
             <Link
@@ -212,14 +241,39 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        <div
-          role="status"
-          className="rounded-2xl border border-blue-500/30 bg-blue-500/10 px-5 py-4 text-sm text-blue-100"
-        >
-          <strong>Public product demo:</strong> all company names, contacts, vendors,
-          risk dates, and audit records shown here are sample data. Editing is disabled
-          and no customer information is exposed.
-        </div>
+        {/* Status / Workspace Banner */}
+        {isDemo ? (
+          <div
+            role="status"
+            className="rounded-2xl border border-blue-500/30 bg-blue-500/10 px-5 py-4 text-sm text-blue-100"
+          >
+            <strong>Public product demo:</strong> all company names, contacts, vendors,
+            risk dates, and audit records shown here are sample data. Editing is disabled
+            and no customer information is exposed.
+          </div>
+        ) : userRole === "viewer" ? (
+          <div
+            role="status"
+            className="rounded-2xl border border-amber-500/30 bg-amber-500/10 px-5 py-4 text-sm text-amber-100 flex items-center gap-2"
+          >
+            <Lock className="w-4 h-4 text-amber-400 shrink-0" />
+            <span>
+              <strong>Viewer Access:</strong> You have read-only access to this organization&apos;s
+              sub-processor register. Contact an organization admin to modify entries.
+            </span>
+          </div>
+        ) : (
+          <div
+            role="status"
+            className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-5 py-4 text-sm text-emerald-100 flex items-center gap-2"
+          >
+            <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+            <span>
+              <strong>Authenticated Workspace ({userRole}):</strong> Live InsForge persistence and
+              immutable SOC 2 audit trail active.
+            </span>
+          </div>
+        )}
 
         {/* Stats Row */}
         <VendorStats vendors={vendors} />
@@ -266,9 +320,9 @@ export default function DashboardPage() {
           <div className="space-y-6">
             <VendorTable
               vendors={vendors}
-              onEditVendor={(v) => setEditingVendor(v)}
-              onAddClick={() => setIsAddOpen(true)}
-              readOnly={isReadOnlyDemo}
+              onEditVendor={(v) => (canEdit ? setEditingVendor(v) : null)}
+              onAddClick={() => (canEdit ? setIsAddOpen(true) : null)}
+              readOnly={isReadOnly}
             />
           </div>
         )}
@@ -335,9 +389,9 @@ export default function DashboardPage() {
                   type="text"
                   required
                   value={companyName}
-                  disabled={isReadOnlyDemo}
+                  disabled={!canAdmin}
                   onChange={(e) => setCompanyName(e.target.value)}
-                  className="w-full px-3.5 py-2 bg-gray-950 border border-gray-800 rounded-lg text-sm text-white focus:border-blue-500 focus:outline-none"
+                  className="w-full px-3.5 py-2 bg-gray-950 border border-gray-800 rounded-lg text-sm text-white focus:border-blue-500 focus:outline-none disabled:text-gray-500 disabled:bg-gray-900"
                 />
               </div>
 
@@ -347,9 +401,9 @@ export default function DashboardPage() {
                   type="url"
                   required
                   value={website}
-                  disabled={isReadOnlyDemo}
+                  disabled={!canAdmin}
                   onChange={(e) => setWebsite(e.target.value)}
-                  className="w-full px-3.5 py-2 bg-gray-950 border border-gray-800 rounded-lg text-sm text-white focus:border-blue-500 focus:outline-none"
+                  className="w-full px-3.5 py-2 bg-gray-950 border border-gray-800 rounded-lg text-sm text-white focus:border-blue-500 focus:outline-none disabled:text-gray-500 disabled:bg-gray-900"
                 />
               </div>
 
@@ -362,9 +416,9 @@ export default function DashboardPage() {
                     type="text"
                     required
                     value={dpoName}
-                    disabled={isReadOnlyDemo}
+                    disabled={!canAdmin}
                     onChange={(e) => setDpoName(e.target.value)}
-                    className="w-full px-3.5 py-2 bg-gray-950 border border-gray-800 rounded-lg text-sm text-white focus:border-blue-500 focus:outline-none"
+                    className="w-full px-3.5 py-2 bg-gray-950 border border-gray-800 rounded-lg text-sm text-white focus:border-blue-500 focus:outline-none disabled:text-gray-500 disabled:bg-gray-900"
                   />
                 </div>
 
@@ -376,9 +430,9 @@ export default function DashboardPage() {
                     type="email"
                     required
                     value={privacyEmail}
-                    disabled={isReadOnlyDemo}
+                    disabled={!canAdmin}
                     onChange={(e) => setPrivacyEmail(e.target.value)}
-                    className="w-full px-3.5 py-2 bg-gray-950 border border-gray-800 rounded-lg text-sm text-white focus:border-blue-500 focus:outline-none"
+                    className="w-full px-3.5 py-2 bg-gray-950 border border-gray-800 rounded-lg text-sm text-white focus:border-blue-500 focus:outline-none disabled:text-gray-500 disabled:bg-gray-900"
                   />
                 </div>
               </div>
@@ -386,10 +440,10 @@ export default function DashboardPage() {
               <div className="pt-4 border-t border-gray-800 flex justify-end">
                 <button
                   type="submit"
-                  disabled={isReadOnlyDemo}
+                  disabled={!canAdmin}
                   className="px-5 py-2 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-500 rounded-lg shadow-md shadow-blue-600/20 transition-all disabled:bg-gray-800 disabled:text-gray-500 disabled:shadow-none disabled:cursor-not-allowed"
                 >
-                  {isReadOnlyDemo ? "Sample Settings" : "Save Settings"}
+                  {isDemo ? "Sample Settings" : !canAdmin ? "Admin Access Required" : "Save Settings"}
                 </button>
               </div>
             </form>
@@ -398,7 +452,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Modals */}
-      {!isReadOnlyDemo && (
+      {canEdit && (
         <>
           <AddVendorModal
             isOpen={isAddOpen}
