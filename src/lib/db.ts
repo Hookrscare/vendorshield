@@ -1,4 +1,4 @@
-import { SubProcessorVendor, CompanySettings, AuditLog, DirectoryVendor } from "./types";
+import { SubProcessorVendor, CompanySettings, AuditLog } from "./types";
 import { INITIAL_COMPANY, INITIAL_REGISTER_VENDORS, DIRECTORY_VENDORS } from "./initial-data";
 
 // In-memory server store for API routes and local state
