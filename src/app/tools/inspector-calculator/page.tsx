@@ -4,15 +4,10 @@ import { useState } from "react";
 import Link from "next/link";
 import {
   Calculator,
-  Camera,
-  Download,
   ArrowRight,
-  ShieldCheck,
   CheckCircle2,
-  DollarSign,
-  Briefcase,
-  Layers,
-  Sparkles,
+  Copy,
+  Check,
 } from "lucide-react";
 import { CheckoutButton } from "@/components/CheckoutButton";
 
@@ -49,6 +44,32 @@ export default function InspectorFeeCalculatorPage() {
   const totalQuote = baseFee + addOnsTotal;
   const estimatedOnSiteHours = trade === "home" ? 2.5 + (squareFootage > 3000 ? 1 : 0) : 1.5;
   const effectiveHourlyRate = Math.round(totalQuote / estimatedOnSiteHours);
+
+  const [copiedQuote, setCopiedQuote] = useState(false);
+
+  const handleCopyQuote = () => {
+    const services = [
+      radonTest ? "Radon Testing ($165)" : null,
+      thermalScan ? "Thermal Infrared ($125)" : null,
+      sewerScope ? "Sewer Scope ($240)" : null,
+      crawlspace ? "Crawlspace Access ($45)" : null,
+      steepRoof ? "Steep Pitch ($60)" : null,
+    ].filter(Boolean).join(", ");
+
+    const text = `INSPECTION ESTIMATE BREAKDOWN
+Discipline: ${trade.toUpperCase()}
+Property Size: ${squareFootage.toLocaleString()} sq ft (${propertyAge} yrs old)
+Base Inspection Fee: $${baseFee}
+Ancillary Add-ons: $${addOnsTotal} (${services || "None"})
+----------------------------------------
+Total Quoted Fee: $${totalQuote}
+Estimated On-Site Time: ~${estimatedOnSiteHours} hrs (Effective $${effectiveHourlyRate}/hr)
+Generated via SnapInspect Field Engine: https://vendorshield-blond.vercel.app/snapinspect`;
+
+    navigator.clipboard.writeText(text);
+    setCopiedQuote(true);
+    setTimeout(() => setCopiedQuote(false), 2000);
+  };
 
   return (
     <div className="min-h-screen bg-[#050811] text-gray-100 py-12 px-4 sm:px-6 lg:px-8 font-sans selection:bg-amber-500 selection:text-black">
@@ -89,13 +110,13 @@ export default function InspectorFeeCalculatorPage() {
               </label>
               <div className="grid grid-cols-3 gap-2">
                 {[
-                  { id: "home", label: "🏡 Residential" },
-                  { id: "roof", label: "🏢 Flat Roof" },
-                  { id: "hvac", label: "⚡ HVAC" },
+                  { id: "home" as const, label: "🏡 Residential" },
+                  { id: "roof" as const, label: "🏢 Flat Roof" },
+                  { id: "hvac" as const, label: "⚡ HVAC" },
                 ].map((t) => (
                   <button
                     key={t.id}
-                    onClick={() => setTrade(t.id as any)}
+                    onClick={() => setTrade(t.id)}
                     className={`py-2.5 px-3 rounded-xl border text-xs font-mono font-semibold transition-all ${
                       trade === t.id
                         ? "bg-amber-500 text-gray-950 border-amber-400 shadow-md shadow-amber-500/20"
@@ -248,6 +269,24 @@ export default function InspectorFeeCalculatorPage() {
             </div>
 
             <div className="space-y-2 pt-4">
+              <button
+                type="button"
+                onClick={handleCopyQuote}
+                className="w-full py-2.5 bg-gray-900 hover:bg-gray-800 text-amber-300 font-mono font-bold text-xs rounded-xl border border-amber-500/30 transition-all flex items-center justify-center gap-2"
+              >
+                {copiedQuote ? (
+                  <>
+                    <Check className="w-3.5 h-3.5 text-amber-400" />
+                    <span>Quote Copied to Clipboard ✓</span>
+                  </>
+                ) : (
+                  <>
+                    <Copy className="w-3.5 h-3.5" />
+                    <span>Copy Client Quote Breakdown</span>
+                  </>
+                )}
+              </button>
+
               <Link
                 href="/snapinspect/app"
                 className="w-full py-3 bg-amber-400 hover:bg-amber-300 text-gray-950 font-mono font-bold text-xs rounded-xl shadow-lg shadow-amber-500/20 transition-all flex items-center justify-center gap-2"
