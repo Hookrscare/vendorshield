@@ -126,7 +126,7 @@ export function generateAuditorPdf(
   });
 
   // Footer Sign-Off on Last Page
-  const finalY = (doc as any).lastAutoTable?.finalY ?? 240;
+  const finalY = (doc as jsPDF & { lastAutoTable?: { finalY?: number } }).lastAutoTable?.finalY ?? 240;
   if (finalY < 250) {
     doc.setFontSize(8);
     doc.setTextColor(100, 116, 139);
