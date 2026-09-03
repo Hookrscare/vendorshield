@@ -240,6 +240,18 @@ export default function AuditExportPage() {
             </div>
 
             <div className="p-3.5 bg-gray-950/80 border border-gray-800 rounded-xl flex items-start gap-3">
+              <div className="w-6 h-6 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center shrink-0 mt-0.5">
+                <Check className="w-3.5 h-3.5" />
+              </div>
+              <div className="text-xs space-y-0.5">
+                <span className="font-semibold text-white">GDPR Article 28(2) Change Notifications</span>
+                <p className="text-gray-400">
+                  Public sub-processor change subscription engine active. Customers receive advance notification before vendor replacements.
+                </p>
+              </div>
+            </div>
+
+            <div className="p-3.5 bg-gray-950/80 border border-gray-800 rounded-xl flex items-start gap-3">
               <div className="w-6 h-6 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0 mt-0.5">
                 <Check className="w-3.5 h-3.5" />
               </div>

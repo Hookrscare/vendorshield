@@ -8,6 +8,7 @@ interface CheckoutButtonProps {
   className?: string;
   children: React.ReactNode;
   customerEmail?: string;
+  metadata?: Record<string, string>;
 }
 
 export function CheckoutButton({
@@ -15,6 +16,7 @@ export function CheckoutButton({
   className = "",
   children,
   customerEmail,
+  metadata,
 }: CheckoutButtonProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -32,6 +34,7 @@ export function CheckoutButton({
         body: JSON.stringify({
           planId,
           customerEmail,
+          metadata,
         }),
       });
 

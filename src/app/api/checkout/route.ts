@@ -38,7 +38,7 @@ function getCheckoutOrigin(request: NextRequest): string {
 
 export async function POST(request: NextRequest) {
   try {
-    const { planId, customerEmail } = await request.json();
+    const { planId, customerEmail, metadata } = await request.json();
 
     const tier = PRICING_TIERS[planId as keyof typeof PRICING_TIERS];
     if (!tier) {
@@ -98,6 +98,21 @@ export async function POST(request: NextRequest) {
             "metadata[planId]": planId,
             ...(orgId ? { "metadata[organizationId]": orgId } : {}),
             ...(userId ? { "metadata[userId]": userId } : {}),
+            ...(metadata && typeof metadata === "object"
+              ? Object.entries(metadata as Record<string, unknown>).reduce(
+                  (acc, [k, v]) => {
+                    if (
+                      typeof v === "string" &&
+                      k.length <= 40 &&
+                      v.length <= 500
+                    ) {
+                      acc[`metadata[${k}]`] = v;
+                    }
+                    return acc;
+                  },
+                  {} as Record<string, string>
+                )
+              : {}),
             ...(hasConfiguredPrice
               ? { "line_items[0][price]": tier.priceId }
               : {
@@ -155,7 +170,11 @@ export async function POST(request: NextRequest) {
     }
 
     // Interactive Checkout Simulator is intentionally limited to local development.
-    const simulatedCheckoutUrl = `${origin}/dashboard?payment_simulated=true&plan=${planId}&amount=${tier.amount / 100}`;
+    const simulatedCheckoutUrl = `${origin}/dashboard?payment_simulated=true&plan=${planId}&amount=${tier.amount / 100}${
+      metadata?.vendorSlug
+        ? `&vendorSlug=${encodeURIComponent(String(metadata.vendorSlug))}`
+        : ""
+    }`;
     return NextResponse.json({
       success: true,
       url: simulatedCheckoutUrl,

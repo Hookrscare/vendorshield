@@ -11,6 +11,11 @@ import {
   Calendar,
   Lock,
   Download,
+  Bell,
+  X,
+  Loader2,
+  Mail,
+  AlertCircle,
 } from "lucide-react";
 import { generateCsvExport } from "@/lib/pdf-export";
 
@@ -27,6 +32,40 @@ export default function PublicSubprocessorsPage({
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("All");
+
+  // GDPR Art. 28(2) subscription state
+  const [isSubOpen, setIsSubOpen] = useState(false);
+  const [subEmail, setSubEmail] = useState("");
+  const [subLoading, setSubLoading] = useState(false);
+  const [subMessage, setSubMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+
+  async function handleSubscribe(e: React.FormEvent) {
+    e.preventDefault();
+    setSubLoading(true);
+    setSubMessage(null);
+    try {
+      const res = await fetch(`/api/public/${slug}/subscribe`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: subEmail }),
+      });
+      const resData = await res.json();
+      if (!res.ok || !resData.success) {
+        setSubMessage({ type: "error", text: resData.error || "Subscription failed" });
+        return;
+      }
+      setSubMessage({ type: "success", text: "Subscribed! You will receive sub-processor change alerts." });
+      setSubEmail("");
+      setTimeout(() => {
+        setIsSubOpen(false);
+        setSubMessage(null);
+      }, 2000);
+    } catch {
+      setSubMessage({ type: "error", text: "Network error submitting subscription" });
+    } finally {
+      setSubLoading(false);
+    }
+  }
 
   useEffect(() => {
     fetch(`/api/public/${slug}`)
@@ -102,13 +141,23 @@ export default function PublicSubprocessorsPage({
                 </div>
               </div>
 
-              <button
-                onClick={() => generateCsvExport(company, vendors)}
-                className="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-gray-200 hover:text-white rounded-xl text-xs font-semibold flex items-center gap-2 border border-gray-700 transition-colors shadow-md"
-              >
-                <Download className="w-3.5 h-3.5" />
-                Download Public CSV
-              </button>
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  onClick={() => setIsSubOpen(true)}
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-semibold flex items-center gap-2 shadow-lg shadow-blue-600/20 transition-all hover:scale-[1.02]"
+                >
+                  <Bell className="w-3.5 h-3.5" />
+                  Subscribe to Change Alerts
+                </button>
+
+                <button
+                  onClick={() => generateCsvExport(company, vendors)}
+                  className="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-gray-200 hover:text-white rounded-xl text-xs font-semibold flex items-center gap-2 border border-gray-700 transition-colors shadow-md"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  Download Public CSV
+                </button>
+              </div>
             </div>
 
             <div className="pt-4 border-t border-gray-800/80 flex flex-wrap items-center gap-6 text-xs text-gray-400">
@@ -241,6 +290,86 @@ export default function PublicSubprocessorsPage({
           </p>
         </div>
       </div>
+
+      {/* Subscribe to Changes Modal */}
+      {isSubOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+          <div className="bg-gray-900 border border-gray-800 rounded-3xl max-w-md w-full p-6 space-y-5 shadow-2xl">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Bell className="w-5 h-5 text-blue-400" />
+                <h3 className="text-lg font-bold text-white">Subscribe to Change Alerts</h3>
+              </div>
+              <button
+                onClick={() => setIsSubOpen(false)}
+                className="text-gray-400 hover:text-white transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <p className="text-xs text-gray-400 leading-relaxed">
+              In accordance with <strong>GDPR Article 28(2)</strong>, enter your work email to receive
+              written notification at least 30 days prior to the engagement or replacement of any
+              sub-processor by {company.name}.
+            </p>
+
+            <form onSubmit={handleSubscribe} className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-gray-300 mb-1.5">
+                  Corporate Work Email
+                </label>
+                <div className="relative">
+                  <Mail className="absolute left-3.5 top-3 w-4 h-4 text-gray-500" />
+                  <input
+                    type="email"
+                    required
+                    value={subEmail}
+                    onChange={(e) => setSubEmail(e.target.value)}
+                    placeholder="privacy-team@customer.com"
+                    className="w-full pl-10 pr-4 py-2.5 bg-gray-950 border border-gray-800 rounded-xl text-sm text-white focus:outline-none focus:border-blue-500"
+                  />
+                </div>
+              </div>
+
+              {subMessage && (
+                <div
+                  className={`p-3 rounded-xl text-xs flex items-center gap-2 ${
+                    subMessage.type === "success"
+                      ? "bg-emerald-500/10 border border-emerald-500/30 text-emerald-300"
+                      : "bg-rose-500/10 border border-rose-500/30 text-rose-300"
+                  }`}
+                >
+                  {subMessage.type === "success" ? (
+                    <CheckCircle2 className="w-4 h-4 shrink-0" />
+                  ) : (
+                    <AlertCircle className="w-4 h-4 shrink-0" />
+                  )}
+                  <span>{subMessage.text}</span>
+                </div>
+              )}
+
+              <div className="flex justify-end gap-2.5 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setIsSubOpen(false)}
+                  className="px-4 py-2 bg-gray-950 hover:bg-gray-800 border border-gray-800 text-gray-300 text-xs font-semibold rounded-xl transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={subLoading}
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold rounded-xl shadow-lg shadow-blue-600/30 transition-all flex items-center gap-1.5 disabled:bg-gray-800 disabled:text-gray-500"
+                >
+                  {subLoading && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                  Confirm Subscription
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

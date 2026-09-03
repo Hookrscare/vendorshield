@@ -210,6 +210,7 @@ export default async function VendorDetailPage({
           <div className="shrink-0 w-full sm:w-auto">
             <CheckoutButton
               planId="vendorshield-pso-claim"
+              metadata={{ vendorSlug: vendor.slug }}
               className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-semibold shadow-md shadow-blue-600/30 transition-colors"
             >
               Claim Profile ($199/mo)
