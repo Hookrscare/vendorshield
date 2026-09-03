@@ -8,12 +8,13 @@ Antigravity reworked QA-101 on branch `qa-101-nextjs-upgrade`. All production de
 | QA-102 | jsPDF and transitive security remediation with regression matrix | Antigravity | Heavy | VERIFIED — integrated on `codex/qa-verified` | — |
 | QA-103 | Real authentication and tenant-isolation architecture | Antigravity | Heavy | DONE | — |
 | QA-104 | Stripe test-to-live readiness audit, with no credential or production mutations | Antigravity | Heavy | DONE | — |
-| QA-105 | Integrated production browser QA and release evidence | Codex verifier | Medium | READY_FOR_VERIFIER | QA-101, QA-102, QA-103, QA-104 |
+| QA-105 | Integrated production browser QA and release evidence | Codex verifier | Medium | DONE | QA-101, QA-102, QA-103, QA-104, QA-106 |
 | QA-106 | Hardened InsForge persistence cutover and role enforcement | Antigravity | Heavy | DONE | QA-103, `6c977a0` |
 
 ## Current Baseline
 
 - Automated tests: 56/56 passing across 15 test suites on `main` (`npm run test:run`).
+- Production browser E2E tests: 16/16 passing on Chromium against compiled production build (`npm run test:e2e`).
 - Production build: 86/86 routes compiled cleanly with Turbopack and 0 type errors (`npm run build`), including 50+ programmatic SEO directory profiles.
 - Security posture: `npm audit --omit=dev` exits 0 with found 0 vulnerabilities.
 - Route smoke tests: 16/16 primary routes verified with HTTP 200 OK on production build.
