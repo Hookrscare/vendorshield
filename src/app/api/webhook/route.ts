@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createHmac, timingSafeEqual } from "node:crypto";
+import { InsForgeEntitlements } from "@/lib/insforge/entitlements";
 
 export const runtime = "nodejs";
 
@@ -86,12 +87,30 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: "Invalid event payload" }, { status: 400 });
       }
       const plan = session.metadata?.planId || "subscription";
+      const orgId = (session.metadata as { organizationId?: string })?.organizationId || null;
+      const customerId = (session as { customer?: string })?.customer || null;
+      const subscriptionId = (session as { subscription?: string })?.subscription || null;
+
+      if (event.id) {
+        const recordResult = await InsForgeEntitlements.recordStripeEventAndEntitlement({
+          eventId: event.id,
+          eventType: event.type,
+          organizationId: orgId,
+          productKey: plan,
+          status: "active",
+          customerId,
+          subscriptionId,
+          sessionId: (session as { id?: string })?.id || null,
+        });
+
+        if (recordResult.deduplicated) {
+          return NextResponse.json({ received: true, deduplicated: true });
+        }
+      }
 
       console.log(
         `[Stripe Webhook] Checkout completed (Event: ${event.id || "unknown"}, Plan: ${plan})`
       );
-      // This confirms receipt only. Durable, idempotent entitlement provisioning
-      // must be implemented before paid access is enforced by the application.
     }
 
     return NextResponse.json({ received: true });

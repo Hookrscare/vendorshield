@@ -4,17 +4,22 @@ import { isProductionReadOnlyDemo, readOnlyDemoResponse } from "@/lib/demo-mode"
 import { resolveTenantContext } from "@/lib/insforge/context";
 import { InsForgeRepository, AuthorizationError } from "@/lib/insforge/repository";
 
+import { InsForgeEntitlements } from "@/lib/insforge/entitlements";
+
 export async function GET(request: NextRequest) {
   try {
     const tenantResult = await resolveTenantContext(request);
 
     if (tenantResult.success) {
-      const { company, logs } = await InsForgeRepository.getCompanySettings(
-        tenantResult.context
-      );
+      const [{ company, logs }, entitlements] = await Promise.all([
+        InsForgeRepository.getCompanySettings(tenantResult.context),
+        InsForgeEntitlements.getOrganizationEntitlements(
+          tenantResult.context.organization.id
+        ),
+      ]);
       return NextResponse.json({
         success: true,
-        data: { company, logs },
+        data: { company, logs, entitlements },
         isDemo: false,
         role: tenantResult.context.role,
       });
@@ -25,7 +30,20 @@ export async function GET(request: NextRequest) {
     const logs = db.getAuditLogs();
     return NextResponse.json({
       success: true,
-      data: { company, logs },
+      data: {
+        company,
+        logs,
+        entitlements: {
+          isPaid: false,
+          primaryPlan: "demo",
+          planName: "Public Product Demo",
+          activeProducts: [],
+          maxVendors: 15,
+          hasAuditExportAccess: true,
+          hasLiveEmbedAccess: true,
+          currentPeriodEnd: null,
+        },
+      },
       isDemo: true,
       role: "viewer",
     });
