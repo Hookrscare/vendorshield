@@ -83,3 +83,20 @@ export interface EntitlementRow {
   created_at: string;
   updated_at: string;
 }
+
+export interface OrganizationInviteRow {
+  id: string;
+  organization_id: string;
+  email: string;
+  role: "admin" | "member" | "viewer";
+  invited_by: string;
+  token: string;
+  expires_at: string;
+  created_at: string;
+}
+
+export interface StripeEventRow {
+  event_id: string;
+  event_type: string;
+  processed_at: string;
+}

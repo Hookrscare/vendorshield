@@ -17,6 +17,7 @@ import {
   Building,
   CheckCircle2,
   Lock,
+  Users,
 } from "lucide-react";
 
 export default function DashboardPage() {
@@ -24,6 +25,10 @@ export default function DashboardPage() {
   const [userRole, setUserRole] = useState<string>("viewer");
   const [vendors, setVendors] = useState<SubProcessorVendor[]>([]);
   const [company, setCompany] = useState<CompanySettings | null>(null);
+  const [entitlements, setEntitlements] = useState<{
+    isPaid: boolean;
+    planName: string;
+  } | null>(null);
   const [logs, setLogs] = useState<AuditLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<"register" | "logs" | "settings">("register");
@@ -58,13 +63,14 @@ export default function DashboardPage() {
         if (vData.isDemo !== undefined) setIsDemo(vData.isDemo);
         if (vData.role) setUserRole(vData.role);
       }
-      if (cData.success) {
+      if (cData.success && cData.data) {
         setCompany(cData.data.company);
         setLogs(cData.data.logs || []);
-        setCompanyName(cData.data.company.name);
-        setPrivacyEmail(cData.data.company.privacyEmail);
-        setDpoName(cData.data.company.dpoName);
-        setWebsite(cData.data.company.website);
+        if (cData.data.entitlements) setEntitlements(cData.data.entitlements);
+        setCompanyName(cData.data.company?.name || "");
+        setPrivacyEmail(cData.data.company?.privacyEmail || "");
+        setDpoName(cData.data.company?.dpoName || "");
+        setWebsite(cData.data.company?.website || "");
         if (cData.isDemo !== undefined) setIsDemo(cData.isDemo);
         if (cData.role) setUserRole(cData.role);
       }
@@ -183,6 +189,16 @@ export default function DashboardPage() {
             <div className="flex items-center gap-2 text-xs font-semibold text-blue-400 uppercase tracking-wider mb-1">
               <Building className="w-3.5 h-3.5" />
               <span>{company?.name || "Acme SaaS Inc."} Sub-Processor Register</span>
+              {entitlements?.isPaid ? (
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
+                  <CheckCircle2 className="w-3 h-3" />
+                  {entitlements.planName}
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-cyan-500/10 text-cyan-400 border border-cyan-500/30">
+                  {isDemo ? "Sample Workspace" : "Community Tier"}
+                </span>
+              )}
             </div>
             <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
               Vendor Risk &amp; SOC 2 Compliance Hub
@@ -228,6 +244,14 @@ export default function DashboardPage() {
             >
               <Code2 className="w-4 h-4 text-purple-400" />
               Embed Widget
+            </Link>
+
+            <Link
+              href="/dashboard/team"
+              className="px-3.5 py-2 bg-gray-900 hover:bg-gray-800 border border-gray-800 text-gray-200 hover:text-white font-semibold text-xs sm:text-sm rounded-xl transition-colors flex items-center gap-1.5"
+            >
+              <Users className="w-4 h-4 text-cyan-400" />
+              Team
             </Link>
 
             <Link
