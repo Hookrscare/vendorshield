@@ -1,93 +1,79 @@
-/**
- * Unit test suite for SNAP-31: High-Precision Multi-Sensor Concrete Slab Moisture Relative Humidity Profiler.
- */
-
 import { describe, it, expect } from 'vitest';
 import {
   ConcreteSlabMoistureProfiler,
-  SlabSpecification,
-  ConcreteProbeReading
+  MoistureProbeReading,
+  FlooringSpecification
 } from './concrete-slab-moisture-profiler';
 
-describe('SNAP-31: Concrete Slab Moisture Profiler', () => {
-  it('validates ASTM F2170 probe depth compliance for single-side drying (40% depth)', () => {
-    // 5-inch slab: target depth is 5 * 0.40 = 2.0 inches (tolerance ±0.25 in: 1.75 - 2.25)
-    const compliant = ConcreteSlabMoistureProfiler.verifyProbeDepthCompliance(2.0, 5.0, 'SINGLE_SIDE_ON_GRADE');
-    expect(compliant.isCompliant).toBe(true);
-    expect(compliant.targetDepthInches).toBe(2.0);
+describe('SNAP-31: ConcreteSlabMoistureProfiler', () => {
+  const spec: FlooringSpecification = {
+    maxAllowableRHPercent: 80.0,
+    maxAllowableMVER: 4.0,
+    coatingType: 'High-Performance Commercial Epoxy'
+  };
 
-    const shallow = ConcreteSlabMoistureProfiler.verifyProbeDepthCompliance(1.0, 5.0, 'SINGLE_SIDE_ON_GRADE');
-    expect(shallow.isCompliant).toBe(false);
-
-    const suspendedCompliant = ConcreteSlabMoistureProfiler.verifyProbeDepthCompliance(1.0, 5.0, 'SUSPENDED_DUAL_SIDE');
-    expect(suspendedCompliant.isCompliant).toBe(true); // 5 * 0.20 = 1.0 in
-  });
-
-  it('calculates MVER vapor emission from RH accurately', () => {
-    expect(ConcreteSlabMoistureProfiler.estimateMverFromRH(50)).toBe(1.0);
-    // At 75% RH: 1.5 * exp(0.045 * 25) ≈ 1.5 * 3.0802 ≈ 4.6 lbs
-    const mver75 = ConcreteSlabMoistureProfiler.estimateMverFromRH(75);
-    expect(mver75).toBeGreaterThanOrEqual(4.4);
-    expect(mver75).toBeLessThanOrEqual(4.8);
-  });
-
-  it('accurately projects days remaining to reach 75% RH', () => {
-    const days = ConcreteSlabMoistureProfiler.estimateDaysRemainingToTargetRH(85, 75, 4.0, 0.50);
-    // 4 inches * 30 days = 120 days total. (85 - 75) / 25 = 10/25 = 0.4 -> 48 days
-    expect(days).toBe(48);
-
-    // If current RH <= target, returns 0
-    expect(ConcreteSlabMoistureProfiler.estimateDaysRemainingToTargetRH(72, 75, 4.0, 0.50)).toBe(0);
-  });
-
-  it('assesses flooring compatibility and flags high risk for moisture-sensitive coatings', () => {
-    const epoxyCheck = ConcreteSlabMoistureProfiler.assessFlooringRisk('EPOXY_COATING', 88, 6.5);
-    expect(epoxyCheck.isCompliant).toBe(false);
-    expect(epoxyCheck.riskLevel).toBe('CRITICAL_FAIL');
-    expect(epoxyCheck.warrantyRisk).toContain('debonding');
-
-    const tileCheck = ConcreteSlabMoistureProfiler.assessFlooringRisk('CERAMIC_TILE', 88, 6.5);
-    expect(tileCheck.isCompliant).toBe(true);
-    expect(tileCheck.riskLevel).toBe('LOW_PASS');
-  });
-
-  it('generates a full multi-sensor concrete moisture report', () => {
-    const slab: SlabSpecification = {
-      totalThicknessInches: 4.0,
-      dryingCondition: 'SINGLE_SIDE_ON_GRADE',
-      waterCementRatio: 0.48,
-      slabAgeDays: 60,
-      ambientTempCelsius: 21.0,
-      ambientRHPct: 50.0
-    };
-
-    const probes: ConcreteProbeReading[] = [
+  it('verifies compliant slab under 40% depth ASTM F2170 single-sided drying', () => {
+    // 6-inch slab drying from one side -> target depth is 6 * 0.40 = 2.40 inches
+    const probes: MoistureProbeReading[] = [
       {
-        probeId: 'PROBE-01',
-        depthInches: 1.6, // 4 * 0.4 = 1.6 in -> compliant
-        relativeHumidityPct: 78.5,
-        temperatureCelsius: 20.8
+        sensorId: 'PROBE-NW-01',
+        depthInches: 2.4,
+        totalThicknessInches: 6.0,
+        relativeHumidityPercent: 72.5,
+        temperatureCelsius: 21.0,
+        acclimationHours: 48
       },
       {
-        probeId: 'PROBE-02',
-        depthInches: 1.6,
-        relativeHumidityPct: 82.0,
-        temperatureCelsius: 21.1
-      },
-      {
-        probeId: 'PROBE-03',
-        depthInches: 0.8, // non-compliant depth
-        relativeHumidityPct: 72.0,
-        temperatureCelsius: 21.0
+        sensorId: 'PROBE-SE-02',
+        depthInches: 2.4,
+        totalThicknessInches: 6.0,
+        relativeHumidityPercent: 74.0,
+        temperatureCelsius: 21.5,
+        acclimationHours: 72
       }
     ];
 
-    const report = ConcreteSlabMoistureProfiler.generateProfileReport(slab, probes);
-    expect(report.totalProbes).toBe(3);
-    expect(report.maxRHPct).toBe(82.0);
-    expect(report.depthCompliancePct).toBe(67);
-    expect(report.probesNonCompliantDepth).toEqual(['PROBE-03']);
-    expect(report.flooringAssessments).toHaveLength(5);
-    expect(report.overallRecommendation).toContain('CRITICAL');
+    const report = ConcreteSlabMoistureProfiler.analyzeSlab('INSP-SLAB-101', 'ONE_SIDE', probes, spec);
+    expect(report.allProbesCompliant).toBe(true);
+    expect(report.dominantRiskClassification).toBe('OPTIMAL_CURED');
+    expect(report.meanRHPercent).toBe(73.3);
+    expect(report.cryptographicVerificationHash).toHaveLength(64);
+    expect(report.sensorAnalyses[0].standardDepthCompliance).toBe(true);
+    expect(report.sensorAnalyses[0].targetDepthInches).toBe(2.4);
+  });
+
+  it('detects elevated vapor emissions and non-compliant probe depth', () => {
+    const probes: MoistureProbeReading[] = [
+      {
+        sensorId: 'PROBE-SHALLOW-01',
+        depthInches: 1.0, // Should be 2.4 inches
+        totalThicknessInches: 6.0,
+        relativeHumidityPercent: 82.0, // Exceeds 80% spec
+        temperatureCelsius: 20.0,
+        acclimationHours: 24
+      }
+    ];
+
+    const report = ConcreteSlabMoistureProfiler.analyzeSlab('INSP-SLAB-102', 'ONE_SIDE', probes, spec);
+    expect(report.allProbesCompliant).toBe(false);
+    expect(report.sensorAnalyses[0].standardDepthCompliance).toBe(false);
+    expect(report.dominantRiskClassification).toBe('ELEVATED_VAPOR_EMISSION');
+  });
+
+  it('detects condensation imminent when surface temp is near dew point', () => {
+    const probes: MoistureProbeReading[] = [
+      {
+        sensorId: 'PROBE-DAMP-01',
+        depthInches: 1.6, // 8 * 0.20 for two sides
+        totalThicknessInches: 8.0,
+        relativeHumidityPercent: 96.0,
+        temperatureCelsius: 15.0,
+        acclimationHours: 48
+      }
+    ];
+
+    const report = ConcreteSlabMoistureProfiler.analyzeSlab('INSP-SLAB-103', 'TWO_SIDES', probes, spec);
+    expect(report.allProbesCompliant).toBe(false);
+    expect(report.dominantRiskClassification).toBe('CONDENSATION_IMMINENT');
   });
 });

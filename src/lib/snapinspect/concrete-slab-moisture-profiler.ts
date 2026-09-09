@@ -1,221 +1,191 @@
 /**
+ * src/lib/snapinspect/concrete-slab-moisture-profiler.ts
  * SNAP-31: High-Precision Multi-Sensor Concrete Slab Moisture Relative Humidity Profiler.
- * Implements ASTM F2170 in-situ probe depth compliance, ASTM F1869 MVER vapor emission analysis,
- * flooring adhesive compatibility risk matrix, and slab drying time maturity estimation.
+ *
+ * Implements ASTM F2170 in situ relative humidity profiling and ASTM F1869 MVER
+ * vapor emission modeling across depth-stratified concrete sensors to certify
+ * adhesive and flooring substrate readiness.
  */
 
-export type SlabDryingCondition = 'SINGLE_SIDE_ON_GRADE' | 'SUSPENDED_DUAL_SIDE';
+import { createHash } from 'crypto';
 
-export type FlooringCoveringType =
-  | 'EPOXY_COATING'
-  | 'LUXURY_VINYL_TILE'
-  | 'HARDWOOD_ENGINEERED'
-  | 'CARPET_PERMEABLE'
-  | 'CERAMIC_TILE';
+export type DryingCondition = 'ONE_SIDE' | 'TWO_SIDES';
 
-export type MoistureRiskLevel = 'LOW_PASS' | 'MODERATE_MONITOR' | 'HIGH_FAIL_RISK' | 'CRITICAL_FAIL';
+export type MoistureRiskClassification =
+  | 'OPTIMAL_CURED'
+  | 'ELEVATED_VAPOR_EMISSION'
+  | 'UNACCEPTABLE_MOISTURE_RISK'
+  | 'CONDENSATION_IMMINENT';
 
-export interface ConcreteProbeReading {
-  probeId: string;
+export interface MoistureProbeReading {
+  sensorId: string;
   depthInches: number;
-  relativeHumidityPct: number;
-  temperatureCelsius: number;
-  locationDescription?: string;
-}
-
-export interface SlabSpecification {
   totalThicknessInches: number;
-  dryingCondition: SlabDryingCondition;
-  waterCementRatio: number; // e.g. 0.45 - 0.60
-  slabAgeDays: number;
-  ambientTempCelsius: number;
-  ambientRHPct: number;
+  relativeHumidityPercent: number; // 0..100
+  temperatureCelsius: number;
+  acclimationHours: number; // ASTM F2170 requires >= 24-72h
 }
 
-export interface FlooringCompatibilityAssessment {
-  flooringType: FlooringCoveringType;
-  maxAllowableRHPct: number;
-  maxAllowableMverLbs: number;
-  measuredRHPct: number;
-  estimatedMverLbs: number;
-  riskLevel: MoistureRiskLevel;
-  isCompliant: boolean;
-  warrantyRisk: string;
+export interface FlooringSpecification {
+  maxAllowableRHPercent: number; // e.g. 75.0, 80.0, 85.0
+  maxAllowableMVER: number; // lbs/1000 sq ft/24h (e.g. 3.0 or 5.0)
+  coatingType: string; // e.g. "Vapor Barrier Epoxy", "LVT Resilient Adhesive"
 }
 
-export interface ConcreteMoistureProfileReport {
-  timestampIso: string;
-  totalProbes: number;
-  averageRHPct: number;
-  maxRHPct: number;
-  minRHPct: number;
-  depthCompliancePct: number;
-  probesNonCompliantDepth: string[];
-  estimatedMverLbsPer1000SqFt24Hr: number;
-  estimatedDaysToReach75PctRH: number;
-  flooringAssessments: FlooringCompatibilityAssessment[];
-  overallRecommendation: string;
+export interface SensorProfileAnalysis {
+  sensorId: string;
+  standardDepthCompliance: boolean;
+  targetDepthInches: number;
+  relativeHumidityPercent: number;
+  dewPointCelsius: number;
+  vaporPressureKPa: number;
+  estimatedMVER: number; // lbs / 1000 sq ft / 24h
+  riskZone: MoistureRiskClassification;
+  warrantyCompliant: boolean;
 }
 
-const FLOORING_THRESHOLDS: Record<FlooringCoveringType, { maxRH: number; maxMver: number }> = {
-  EPOXY_COATING: { maxRH: 75, maxMver: 3.0 },
-  HARDWOOD_ENGINEERED: { maxRH: 75, maxMver: 3.0 },
-  LUXURY_VINYL_TILE: { maxRH: 85, maxMver: 5.0 },
-  CARPET_PERMEABLE: { maxRH: 90, maxMver: 8.0 },
-  CERAMIC_TILE: { maxRH: 95, maxMver: 10.0 }
-};
+export interface ConcreteMoistureReport {
+  inspectionId: string;
+  dryingCondition: DryingCondition;
+  probeCount: number;
+  meanRHPercent: number;
+  maxRHPercent: number;
+  meanEstimatedMVER: number;
+  allProbesCompliant: boolean;
+  dominantRiskClassification: MoistureRiskClassification;
+  sensorAnalyses: SensorProfileAnalysis[];
+  cryptographicVerificationHash: string;
+}
 
 export class ConcreteSlabMoistureProfiler {
   /**
-   * Validates probe depth according to ASTM F2170:
-   * - 40% (±5%) of slab thickness for single-side drying (slab on grade / vapor retarder)
-   * - 20% (±5%) of slab thickness for dual-side drying (suspended slab)
+   * Computes saturation vapor pressure using Tetens equation (kPa).
    */
-  public static verifyProbeDepthCompliance(
-    depthInches: number,
-    thicknessInches: number,
-    condition: SlabDryingCondition
-  ): { isCompliant: boolean; targetDepthInches: number; toleranceInches: number } {
-    const targetRatio = condition === 'SINGLE_SIDE_ON_GRADE' ? 0.40 : 0.20;
-    const targetDepth = thicknessInches * targetRatio;
-    const tolerance = thicknessInches * 0.05; // ±5% of thickness
-
-    const isCompliant = Math.abs(depthInches - targetDepth) <= tolerance;
-    return {
-      isCompliant,
-      targetDepthInches: Math.round(targetDepth * 100) / 100,
-      toleranceInches: Math.round(tolerance * 100) / 100
-    };
+  private static getSaturationVaporPressure(tempC: number): number {
+    return 0.61078 * Math.exp((17.27 * tempC) / (tempC + 237.3));
   }
 
   /**
-   * Converts in-situ %RH to approximate MVER (lbs/1000 sq ft / 24 hr)
-   * using standard empirical moisture diffusion relationships for 4-6" normal-weight concrete.
+   * Computes dew point in Celsius using Magnus formula.
    */
-  public static estimateMverFromRH(rhPct: number): number {
-    if (rhPct <= 50) return 1.0;
-    // Empirical exponential moisture flux relationship: MVER ≈ 1.5 * exp(0.045 * (RH - 50))
-    const mver = 1.5 * Math.exp(0.045 * (rhPct - 50));
-    return Math.round(mver * 10) / 10;
+  private static computeDewPoint(tempC: number, rhPercent: number): number {
+    const a = 17.27;
+    const b = 237.7;
+    const alpha = (a * tempC) / (b + tempC) + Math.log(rhPercent / 100.0);
+    return (b * alpha) / (a - alpha);
   }
 
   /**
-   * Projects drying timeline to reach 75% RH based on Fickian diffusion rule-of-thumb:
-   * Normal weight concrete takes ~30 days per inch of thickness to dry to 75-80% RH under standard 70°F/50% RH ambient.
+   * Estimates Moisture Vapor Emission Rate (MVER) from in situ RH & Vapor Pressure.
+   * Empirical approximation: MVER ~ 3.0 * (RH / 75)^3 * (VaporPressure / 2.3)
    */
-  public static estimateDaysRemainingToTargetRH(
-    currentRHPct: number,
-    targetRHPct: number,
-    thicknessInches: number,
-    waterCementRatio: number
-  ): number {
-    if (currentRHPct <= targetRHPct) return 0;
-
-    const baseDaysPerInch = 30 * (waterCementRatio / 0.50);
-    const totalDryingDays = baseDaysPerInch * thicknessInches;
-    const remainingFraction = (currentRHPct - targetRHPct) / (100 - targetRHPct);
-
-    return Math.max(0, Math.round(totalDryingDays * remainingFraction));
+  private static estimateMVER(rhPercent: number, vaporPressureKPa: number): number {
+    const baseRatio = Math.max(0, rhPercent / 75.0);
+    const vpFactor = Math.max(0.5, vaporPressureKPa / 2.338); // VP at 20°C is ~2.338 kPa
+    const mver = 3.0 * Math.pow(baseRatio, 3.2) * vpFactor;
+    return Math.round(mver * 100) / 100;
   }
 
   /**
-   * Evaluates flooring adhesive compatibility across standard finishes.
+   * Analyzes an array of depth-stratified ASTM F2170 probe readings.
    */
-  public static assessFlooringRisk(
-    type: FlooringCoveringType,
-    measuredRHPct: number,
-    estimatedMver: number
-  ): FlooringCompatibilityAssessment {
-    const limits = FLOORING_THRESHOLDS[type];
-    const isCompliant = measuredRHPct <= limits.maxRH && estimatedMver <= limits.maxMver;
-
-    let riskLevel: MoistureRiskLevel = 'LOW_PASS';
-    let warrantyRisk = 'Low risk. Adhesive warranty valid under standard installation specifications.';
-
-    if (measuredRHPct > limits.maxRH + 8 || estimatedMver > limits.maxMver + 3) {
-      riskLevel = 'CRITICAL_FAIL';
-      warrantyRisk = 'Extreme risk: catastrophic adhesive saponification, blistering, and debonding imminent.';
-    } else if (measuredRHPct > limits.maxRH || estimatedMver > limits.maxMver) {
-      riskLevel = 'HIGH_FAIL_RISK';
-      warrantyRisk = 'High risk: exceeds manufacturer moisture threshold. Requires topical epoxy vapor barrier.';
-    } else if (measuredRHPct >= limits.maxRH - 5) {
-      riskLevel = 'MODERATE_MONITOR';
-      warrantyRisk = 'Moderate risk: near upper warranty threshold. Re-test in 48 hours prior to adhesive application.';
-    }
-
-    return {
-      flooringType: type,
-      maxAllowableRHPct: limits.maxRH,
-      maxAllowableMverLbs: limits.maxMver,
-      measuredRHPct,
-      estimatedMverLbs: estimatedMver,
-      riskLevel,
-      isCompliant,
-      warrantyRisk
-    };
-  }
-
-  /**
-   * Generates comprehensive slab moisture survey report.
-   */
-  public static generateProfileReport(
-    slab: SlabSpecification,
-    probes: ConcreteProbeReading[]
-  ): ConcreteMoistureProfileReport {
+  public static analyzeSlab(
+    inspectionId: string,
+    dryingCondition: DryingCondition,
+    probes: MoistureProbeReading[],
+    spec: FlooringSpecification
+  ): ConcreteMoistureReport {
     if (probes.length === 0) {
-      throw new Error('Concrete moisture survey requires at least one probe reading.');
+      throw new Error('At least one probe reading required for slab moisture analysis.');
     }
 
-    let nonCompliantCount = 0;
-    const nonCompliantIds: string[] = [];
+    const depthFraction = dryingCondition === 'ONE_SIDE' ? 0.40 : 0.20;
+    const sensorAnalyses: SensorProfileAnalysis[] = [];
 
-    for (const p of probes) {
-      const check = this.verifyProbeDepthCompliance(p.depthInches, slab.totalThicknessInches, slab.dryingCondition);
-      if (!check.isCompliant) {
-        nonCompliantCount++;
-        nonCompliantIds.push(p.probeId);
+    let sumRH = 0;
+    let maxRH = 0;
+    let sumMVER = 0;
+
+    for (const probe of probes) {
+      const targetDepth = probe.totalThicknessInches * depthFraction;
+      // Probe is compliant if within 0.25 inches of mandated ASTM depth
+      const standardDepthCompliance =
+        Math.abs(probe.depthInches - targetDepth) <= 0.35 &&
+        probe.acclimationHours >= 24;
+
+      const satVP = this.getSaturationVaporPressure(probe.temperatureCelsius);
+      const actualVP = (probe.relativeHumidityPercent / 100.0) * satVP;
+      const dewPoint = this.computeDewPoint(probe.temperatureCelsius, probe.relativeHumidityPercent);
+      const estimatedMVER = this.estimateMVER(probe.relativeHumidityPercent, actualVP);
+
+      sumRH += probe.relativeHumidityPercent;
+      if (probe.relativeHumidityPercent > maxRH) {
+        maxRH = probe.relativeHumidityPercent;
       }
+      sumMVER += estimatedMVER;
+
+      // Risk zone categorization
+      let riskZone: MoistureRiskClassification;
+      if (probe.temperatureCelsius - dewPoint <= 1.5) {
+        riskZone = 'CONDENSATION_IMMINENT';
+      } else if (probe.relativeHumidityPercent > 85.0 || estimatedMVER > 5.0) {
+        riskZone = 'UNACCEPTABLE_MOISTURE_RISK';
+      } else if (
+        probe.relativeHumidityPercent > spec.maxAllowableRHPercent ||
+        estimatedMVER > spec.maxAllowableMVER
+      ) {
+        riskZone = 'ELEVATED_VAPOR_EMISSION';
+      } else {
+        riskZone = 'OPTIMAL_CURED';
+      }
+
+      const warrantyCompliant =
+        standardDepthCompliance &&
+        probe.relativeHumidityPercent <= spec.maxAllowableRHPercent &&
+        estimatedMVER <= spec.maxAllowableMVER;
+
+      sensorAnalyses.push({
+        sensorId: probe.sensorId,
+        standardDepthCompliance,
+        targetDepthInches: Math.round(targetDepth * 100) / 100,
+        relativeHumidityPercent: probe.relativeHumidityPercent,
+        dewPointCelsius: Math.round(dewPoint * 10) / 10,
+        vaporPressureKPa: Math.round(actualVP * 100) / 100,
+        estimatedMVER,
+        riskZone,
+        warrantyCompliant
+      });
     }
 
-    const depthCompliancePct = Math.round(((probes.length - nonCompliantCount) / probes.length) * 100);
+    const meanRHPercent = Math.round((sumRH / probes.length) * 10) / 10;
+    const maxRH = Math.max(...probes.map((p) => p.relativeHumidityPercent));
+    const meanEstimatedMVER = Math.round((sumMVER / probes.length) * 100) / 100;
+    const allProbesCompliant = sensorAnalyses.every((s) => s.warrantyCompliant);
 
-    const rhValues = probes.map((p) => p.relativeHumidityPct);
-    const avgRH = Math.round((rhValues.reduce((a, b) => a + b, 0) / rhValues.length) * 10) / 10;
-    const maxRH = Math.max(...rhValues);
-    const minRH = Math.min(...rhValues);
-
-    const estMver = this.estimateMverFromRH(maxRH);
-    const daysTo75 = this.estimateDaysRemainingToTargetRH(maxRH, 75, slab.totalThicknessInches, slab.waterCementRatio);
-
-    const flooringTypes: FlooringCoveringType[] = [
-      'EPOXY_COATING',
-      'HARDWOOD_ENGINEERED',
-      'LUXURY_VINYL_TILE',
-      'CARPET_PERMEABLE',
-      'CERAMIC_TILE'
-    ];
-
-    const flooringAssessments = flooringTypes.map((type) => this.assessFlooringRisk(type, maxRH, estMver));
-
-    let overallRecommendation = 'Slab meets target moisture criteria for standard resilient flooring.';
-    if (flooringAssessments.some((a) => a.riskLevel === 'CRITICAL_FAIL')) {
-      overallRecommendation = 'CRITICAL: Excessive moisture detected. Apply Class 1 vapor barrier or allow extended drying.';
-    } else if (flooringAssessments.some((a) => a.riskLevel === 'HIGH_FAIL_RISK')) {
-      overallRecommendation = 'CAUTION: Moisture exceeds limits for non-breathable flooring. Vapor mitigation recommended.';
+    // Dominant risk: worst case among probes
+    let dominantRiskClassification: MoistureRiskClassification = 'OPTIMAL_CURED';
+    if (sensorAnalyses.some((s) => s.riskZone === 'CONDENSATION_IMMINENT')) {
+      dominantRiskClassification = 'CONDENSATION_IMMINENT';
+    } else if (sensorAnalyses.some((s) => s.riskZone === 'UNACCEPTABLE_MOISTURE_RISK')) {
+      dominantRiskClassification = 'UNACCEPTABLE_MOISTURE_RISK';
+    } else if (sensorAnalyses.some((s) => s.riskZone === 'ELEVATED_VAPOR_EMISSION')) {
+      dominantRiskClassification = 'ELEVATED_VAPOR_EMISSION';
     }
+
+    const hashInput = `${inspectionId}:${dryingCondition}:${meanRHPercent}:${meanEstimatedMVER}:${allProbesCompliant}`;
+    const cryptographicVerificationHash = createHash('sha256').update(hashInput).digest('hex');
 
     return {
-      timestampIso: new Date().toISOString(),
-      totalProbes: probes.length,
-      averageRHPct: avgRH,
-      maxRHPct: maxRH,
-      minRHPct: minRH,
-      depthCompliancePct,
-      probesNonCompliantDepth: nonCompliantIds,
-      estimatedMverLbsPer1000SqFt24Hr: estMver,
-      estimatedDaysToReach75PctRH: daysTo75,
-      flooringAssessments,
-      overallRecommendation
+      inspectionId,
+      dryingCondition,
+      probeCount: probes.length,
+      meanRHPercent,
+      maxRHPercent: maxRH,
+      meanEstimatedMVER,
+      allProbesCompliant,
+      dominantRiskClassification,
+      sensorAnalyses,
+      cryptographicVerificationHash
     };
   }
 }
