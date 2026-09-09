@@ -102,8 +102,8 @@ export class EgressDlpInterceptor {
       }
     }
 
-    // 3. API Secret Keys (e.g. sk_live_..., ghp_..., eyJ...)
-    const keyRegex = /\b(?:sk_live_[a-zA-Z0-9]{20,}|ghp_[a-zA-Z0-9]{20,}|AIza[0-9A-Za-z-_]{35})\b/g;
+    // 3. API Secret Keys (e.g. sk_live_..., sk_mock_..., ghp_..., eyJ...)
+    const keyRegex = /\b(?:sk_(?:live|test|mock)_[a-zA-Z0-9]{20,}|ghp_[a-zA-Z0-9]{20,}|AIza[0-9A-Za-z-_]{35})\b/g;
     let keyMatch;
     while ((keyMatch = keyRegex.exec(request.payloadText)) !== null) {
       const candidate = keyMatch[0];
