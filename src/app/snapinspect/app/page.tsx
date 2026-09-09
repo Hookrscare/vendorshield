@@ -39,6 +39,8 @@ import { DefectModal } from "@/components/snapinspect/DefectModal";
 import { VoiceRecorder } from "@/components/snapinspect/VoiceRecorder";
 import { parseInspectorVoiceTranscript } from "@/lib/snapinspect/voice-parser";
 import { generateInspectionPdf } from "@/lib/snapinspect/pdf-generator";
+import { OfflineSyncManager, OfflineSyncState } from "@/lib/snapinspect/offline-sync";
+import { Wifi, WifiOff } from "lucide-react";
 
 export default function SnapInspectAppPage() {
   const [inspections, setInspections] = useState<InspectionData[]>(INITIAL_INSPECTIONS);
@@ -52,6 +54,21 @@ export default function SnapInspectAppPage() {
   const [showVoiceRecorder, setShowVoiceRecorder] = useState(false);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
+  const [syncState, setSyncState] = useState<OfflineSyncState>({
+    isOnline: true,
+    swRegistered: false,
+    pendingSyncCount: 0,
+    lastSyncedAt: null,
+  });
+
+  // Subscribe to offline sync manager
+  useEffect(() => {
+    const manager = OfflineSyncManager.getInstance();
+    const unsubscribe = manager.subscribe((state) => {
+      setSyncState(state);
+    });
+    return () => unsubscribe();
+  }, []);
 
   // Load from localStorage if available
   useEffect(() => {
@@ -226,6 +243,20 @@ export default function SnapInspectAppPage() {
 
           {/* Quick Actions Header */}
           <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-end">
+            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium border bg-gray-950/70 shrink-0">
+              {syncState.isOnline ? (
+                <>
+                  <Wifi className="w-3.5 h-3.5 text-emerald-400" />
+                  <span className="text-emerald-400 font-semibold">Online</span>
+                </>
+              ) : (
+                <>
+                  <WifiOff className="w-3.5 h-3.5 text-amber-400" />
+                  <span className="text-amber-400 font-semibold">Offline (Local Cache)</span>
+                </>
+              )}
+            </div>
+
             <button
               onClick={handleCreateNewInspection}
               className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-200 text-xs font-semibold rounded-xl border border-gray-700 flex items-center gap-1 transition-colors"

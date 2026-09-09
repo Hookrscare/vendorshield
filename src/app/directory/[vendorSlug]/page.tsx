@@ -1,4 +1,5 @@
 import { DIRECTORY_VENDORS } from "@/lib/initial-data";
+import { generateDirectoryMetadata, generateDirectoryVendorSchema } from "@/lib/directory-schema";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
@@ -22,6 +23,16 @@ export function generateStaticParams() {
   }));
 }
 
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ vendorSlug: string }>;
+}) {
+  const { vendorSlug } = await params;
+  const vendor = DIRECTORY_VENDORS.find((v) => v.slug === vendorSlug);
+  return generateDirectoryMetadata(vendor);
+}
+
 export default async function VendorDetailPage({
   params,
 }: {
@@ -34,8 +45,14 @@ export default async function VendorDetailPage({
     notFound();
   }
 
+  const jsonLd = generateDirectoryVendorSchema(vendor);
+
   return (
     <div className="min-h-screen bg-gray-950 text-gray-100 py-12 px-4 sm:px-6 lg:px-8">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       <div className="max-w-4xl mx-auto space-y-8">
         {/* Breadcrumb */}
         <div className="flex items-center gap-2 text-xs text-gray-400">

@@ -65,6 +65,16 @@ export interface InspectionData {
   updatedAt: string;
 }
 
+export interface DefectClause {
+  id: string;
+  category: string;
+  title: string;
+  description: string;
+  severity: DefectSeverity;
+  actionRecommended: string;
+  typicalCostRange: string;
+}
+
 export interface TradeTemplate {
   id: InspectionTrade;
   name: string;
@@ -75,4 +85,6 @@ export interface TradeTemplate {
   defaultCategories: string[];
   defaultScope: string;
   disclaimer: string;
+  defectClauses?: DefectClause[];
 }
+
