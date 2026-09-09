@@ -1,116 +1,90 @@
 /**
- * Unit Regression Test Suite for QA-134: Real-Time FedRAMP Continuous Monitoring SSP Exporter.
- * Part of VendorShield B2B SOC 2 & GDPR Sub-Processor Trust Hub.
+ * Regression tests for QA-134: FedRAMP Continuous Monitoring SSP Exporter.
  */
 
-import { describe, it, expect } from "vitest";
-import {
-  FedRAMPConMonSSPExporter,
-  VendorSubProcessorTelemetry,
-  POAMItem
-} from "./fedramp-ssp-exporter";
+import { describe, it, expect } from 'vitest';
+import { FedrampSspExporter, NistControl, PoamItem } from './fedramp-ssp-exporter';
 
-describe("FedRAMPConMonSSPExporter", () => {
-  const exporter = new FedRAMPConMonSSPExporter("test-fedramp-hmac-key");
-
-  const compliantVendors: VendorSubProcessorTelemetry[] = [
-    {
-      vendorId: "v-aws-gov",
-      vendorName: "Amazon Web Services GovCloud",
-      fedRAMPAuthorized: true,
-      fedRAMPId: "F1603077983",
-      soc2Type2Active: true,
-      tlsVersion: "TLS_1_3",
-      mfaEnforced: true,
-      auditLogRetentionDays: 365,
-      openCvesCount: 0,
-      highSeverityCvesCount: 0,
-    },
-    {
-      vendorId: "v-okta",
-      vendorName: "Okta Identity Cloud",
-      fedRAMPAuthorized: true,
-      fedRAMPId: "F1906107248",
-      soc2Type2Active: true,
-      tlsVersion: "TLS_1_3",
-      mfaEnforced: true,
-      auditLogRetentionDays: 180,
-      openCvesCount: 0,
-      highSeverityCvesCount: 0,
-    }
-  ];
-
-  it("evaluates compliant sub-processors as fully implemented under FedRAMP MODERATE", () => {
-    const report = exporter.generateConMonPackage(
-      "VendorShield GovCloud SaaS",
-      "2026-09",
-      "MODERATE",
-      compliantVendors,
-      []
+describe('QA-134: FedrampSspExporter', () => {
+  it('initializes correctly and validates constructor parameters', () => {
+    expect(() => new FedrampSspExporter('', '1.0.0')).toThrowError(
+      'System name must not be empty'
+    );
+    expect(() => new FedrampSspExporter('TrustHub', '')).toThrowError(
+      'System version must not be empty'
     );
 
-    expect(report.overallStatus).toBe("COMPLIANT");
-    expect(report.evaluatedSubProcessorsCount).toBe(2);
-    expect(report.fedRampAuthorizedSubProcessorsCount).toBe(2);
-    expect(report.activePoamCount).toBe(0);
-    expect(report.nistControls.every((c) => c.implementationStatus === "IMPLEMENTED")).toBe(true);
-    expect(report.conmonPackageHashSha256).toBeDefined();
-    expect(report.conmonPackageHashSha256.length).toBe(64);
+    const exporter = new FedrampSspExporter('VendorShield Trust Hub', '2.4.0', 'MODERATE');
+    const report = exporter.generateReport();
+
+    expect(report.systemName).toBe('VendorShield Trust Hub');
+    expect(report.baseline).toBe('MODERATE');
+    expect(report.totalControlsEvaluated).toBe(0);
+    expect(report.conMonComplianceStatus).toBe('COMPLIANT');
+    expect(report.immutableDigest).toHaveLength(64);
   });
 
-  it("detects missing MFA and flags AC-2 as PARTIALLY_IMPLEMENTED with ACTION_REQUIRED status", () => {
-    const nonCompliantVendors: VendorSubProcessorTelemetry[] = [
-      ...compliantVendors,
-      {
-        vendorId: "v-legacy-crm",
-        vendorName: "Legacy Marketing Automation",
-        fedRAMPAuthorized: false,
-        soc2Type2Active: false,
-        tlsVersion: "TLS_1_2",
-        mfaEnforced: false, // Breach of AC-2
-        auditLogRetentionDays: 30,
-        openCvesCount: 2,
-        highSeverityCvesCount: 0,
-      }
-    ];
+  it('calculates control implementation rate and generates OSCAL package', () => {
+    const exporter = new FedrampSspExporter('VendorShield Core', '2.4.0', 'HIGH');
 
-    const report = exporter.generateConMonPackage(
-      "VendorShield GovCloud SaaS",
-      "2026-09",
-      "MODERATE",
-      nonCompliantVendors,
-      []
-    );
+    const c1: NistControl = {
+      id: 'AC-2',
+      family: 'AC',
+      title: 'Account Management',
+      status: 'IMPLEMENTED',
+      responsibleRole: 'Security Operations',
+      implementationDescription: 'Automated SCIM Okta user lifecycle management with quarterly reviews.',
+    };
 
-    expect(report.overallStatus).toBe("ACTION_REQUIRED");
-    const ac2 = report.nistControls.find((c) => c.controlId === "AC-2");
-    expect(ac2?.implementationStatus).toBe("PARTIALLY_IMPLEMENTED");
+    const c2: NistControl = {
+      id: 'IA-2',
+      family: 'IA',
+      title: 'Identification and Authentication (Organizational Users)',
+      status: 'IMPLEMENTED',
+      responsibleRole: 'Identity Team',
+      implementationDescription: 'FIDO2 WebAuthn MFA mandatory across all internal routes.',
+    };
+
+    const c3: NistControl = {
+      id: 'SC-7',
+      family: 'SC',
+      title: 'Boundary Protection',
+      status: 'PARTIALLY_IMPLEMENTED',
+      responsibleRole: 'DevOps',
+      implementationDescription: 'AWS VPC security groups and Cloudflare WAF.',
+    };
+
+    exporter.registerControl(c1);
+    exporter.registerControl(c2);
+    exporter.registerControl(c3);
+
+    const report = exporter.generateReport();
+    expect(report.totalControlsEvaluated).toBe(3);
+    expect(report.implementedControlsCount).toBe(2);
+    expect(report.implementationRatePercentage).toBe(66.7);
+    expect(report.oscalPackage['system-security-plan']['control-implementation']['implemented-requirements']).toHaveLength(3);
+    expect(report.markdownSummary).toContain('66.7%');
   });
 
-  it("escalates to NON_COMPLIANT when active critical/high POA&M weaknesses are unmitigated", () => {
-    const openPoams: POAMItem[] = [
-      {
-        poamId: "POAM-2026-001",
-        weaknessName: "Open Critical RCE Vulnerability in Sub-Processor Gateway",
-        sourceOfWeakness: "VULNERABILITY_SCAN",
-        nistControl: "SI-2",
-        riskRating: "CRITICAL",
-        scheduledCompletionDateIso: "2026-09-30T00:00:00Z",
-        mitigationStrategy: "Apply patch v3.2.1 and rotate API tokens",
-        daysRemaining: 14,
-      }
-    ];
+  it('flags non-compliance when critical POA&Ms exceed 30-day FedRAMP SLA', () => {
+    const exporter = new FedrampSspExporter('VendorShield Core', '2.4.0', 'MODERATE');
 
-    const report = exporter.generateConMonPackage(
-      "VendorShield GovCloud SaaS",
-      "2026-09",
-      "HIGH",
-      compliantVendors,
-      openPoams
-    );
+    const overduePoam: PoamItem = {
+      poamId: 'POAM-001',
+      controlId: 'SI-4',
+      weakness: 'Outdated IDS snort signature set',
+      severity: 'CRITICAL',
+      daysOpen: 45, // Exceeds 30-day SLA!
+      scheduledCompletionDate: '2026-10-01',
+      status: 'OPEN',
+    };
 
-    expect(report.overallStatus).toBe("NON_COMPLIANT");
-    expect(report.activePoamCount).toBe(1);
-    expect(report.poamItems[0].riskRating).toBe("CRITICAL");
+    exporter.addPoamItem(overduePoam);
+    const report = exporter.generateReport();
+
+    expect(report.openPoamCount).toBe(1);
+    expect(report.overduePoamCount).toBe(1);
+    expect(report.conMonComplianceStatus).toBe('NON_COMPLIANT');
+    expect(report.markdownSummary).toContain('NON_COMPLIANT');
   });
 });
