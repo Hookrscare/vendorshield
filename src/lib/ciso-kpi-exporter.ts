@@ -31,7 +31,117 @@ export interface CisoKpiSummary {
   auditDigestSha256: string;
 }
 
+export interface VendorPostureSnapshot {
+  totalVendors: number;
+  criticalTier1Count: number;
+  soc2Type2CertifiedCount: number;
+  activeDpaCount: number;
+  expiringDpaCount: number;
+  nonCompliantTransfersCount: number;
+  unresolvedCriticalCvesCount: number;
+  averageBreachNotificationHours: number;
+}
+
+export interface ExecutiveBriefing {
+  tenantId: string;
+  evaluatedAtIso: string;
+  securityScore: number;
+  securityGrade: "A+" | "A" | "B" | "C" | "D" | "F";
+  incidentMetrics: {
+    gdpr72hSlaAdherent: boolean;
+    averageBreachHours: number;
+  };
+  keyActionItems: string[];
+  reportDigestSha256: string;
+}
+
 export class CisoKpiExporter {
+  public static calculateGrade(score: number): "A+" | "A" | "B" | "C" | "D" | "F" {
+    if (score >= 95) return "A+";
+    if (score >= 85) return "A";
+    if (score >= 75) return "B";
+    if (score >= 65) return "C";
+    if (score >= 50) return "D";
+    return "F";
+  }
+
+  public static calculateSecurityScore(snapshot: VendorPostureSnapshot): { score: number; grade: "A+" | "A" | "B" | "C" | "D" | "F" } {
+    if (!snapshot || snapshot.totalVendors === 0) {
+      return { score: 100, grade: "A+" };
+    }
+
+    let score = 100;
+
+    // SOC 2 coverage deduction (up to 25 pts)
+    const soc2Ratio = snapshot.soc2Type2CertifiedCount / snapshot.totalVendors;
+    score -= (1 - soc2Ratio) * 25;
+
+    // DPA coverage deduction (up to 20 pts)
+    const dpaRatio = snapshot.activeDpaCount / snapshot.totalVendors;
+    score -= (1 - dpaRatio) * 20;
+
+    // Expiring DPAs (2 pts per expiring DPA, up to 10)
+    score -= Math.min(10, snapshot.expiringDpaCount * 2);
+
+    // Non-compliant international transfers (10 pts per transfer)
+    score -= snapshot.nonCompliantTransfersCount * 10;
+
+    // Unresolved critical CVEs (5 pts per CVE)
+    score -= snapshot.unresolvedCriticalCvesCount * 5;
+
+    // GDPR 72h SLA adherence: penalty if > 72h
+    if (snapshot.averageBreachNotificationHours > 72.0) {
+      score -= Math.min(25, 10 + (snapshot.averageBreachNotificationHours - 72.0) * 0.5);
+    }
+
+    const clampedScore = Math.min(100, Math.max(0, Math.round(score)));
+    return {
+      score: clampedScore,
+      grade: this.calculateGrade(clampedScore)
+    };
+  }
+
+  public static generateExecutiveBriefing(tenantId: string, snapshot: VendorPostureSnapshot): ExecutiveBriefing {
+    const { score, grade } = this.calculateSecurityScore(snapshot);
+    const gdpr72hSlaAdherent = snapshot.averageBreachNotificationHours <= 72.0 || snapshot.totalVendors === 0;
+
+    const keyActionItems: string[] = [];
+    if (snapshot.totalVendors > 0) {
+      if (snapshot.nonCompliantTransfersCount > 0) {
+        keyActionItems.push(`Remediate ${snapshot.nonCompliantTransfersCount} non-compliant international sub-processor transfers.`);
+      }
+      if (snapshot.unresolvedCriticalCvesCount > 0) {
+        keyActionItems.push(`Resolve ${snapshot.unresolvedCriticalCvesCount} critical CVE vulnerabilities on sub-processors.`);
+      }
+      if (!gdpr72hSlaAdherent) {
+        keyActionItems.push(`Vendor incident notification SLA (${snapshot.averageBreachNotificationHours}h) exceeds 72h GDPR statutory limit.`);
+      }
+      if (snapshot.expiringDpaCount > 0) {
+        keyActionItems.push(`${snapshot.expiringDpaCount} vendor Data Processing Agreements require renewal.`);
+      }
+      if (snapshot.soc2Type2CertifiedCount < snapshot.totalVendors) {
+        keyActionItems.push(`${snapshot.totalVendors - snapshot.soc2Type2CertifiedCount} vendors missing current SOC 2 Type II attestation.`);
+      }
+    }
+
+    const evaluatedAtIso = new Date().toISOString();
+    const digestPayload = `${tenantId}:${snapshot.totalVendors}:${score}:${snapshot.averageBreachNotificationHours}:${evaluatedAtIso}`;
+    const reportDigestSha256 = createHash("sha256").update(digestPayload).digest("hex");
+
+    return {
+      tenantId,
+      evaluatedAtIso,
+      securityScore: score,
+      securityGrade: grade,
+      incidentMetrics: {
+        gdpr72hSlaAdherent,
+        averageBreachHours: snapshot.averageBreachNotificationHours
+      },
+      keyActionItems,
+      reportDigestSha256
+    };
+  }
+
   public static calculateKpis(vendors: VendorPostureRecord[], timestampIso: string = new Date().toISOString()): CisoKpiSummary {
     if (vendors.length === 0) {
       return {
