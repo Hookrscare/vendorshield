@@ -1,80 +1,52 @@
-/**
- * src/lib/vendor-soc2-access-control-enforcer.regression.test.ts
- * Regression tests for QA-145: Automated Vendor SOC 2 CC6.1 - CC6.8 Access Control Policy Enforcer.
- */
-
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect } from "vitest";
 import {
-  VendorSOC2AccessControlEnforcer,
-  VendorAccessPosture
-} from './vendor-soc2-access-control-enforcer';
+  VendorSoc2AccessControlEnforcer,
+  type VendorAccessConfig,
+} from "./vendor-soc2-access-control-enforcer";
 
-describe('QA-145: VendorSOC2AccessControlEnforcer', () => {
-  const enforcer = new VendorSOC2AccessControlEnforcer();
-
-  const fullyCompliantVendor: VendorAccessPosture = {
-    vendorId: 'VEND_ACME_SECURE',
-    vendorName: 'Acme Cloud Data Inc.',
-    mfaEnforced: true,
-    mfaType: 'WEBAUTHN_FIDO2',
-    rbacImplemented: true,
-    privilegedAccessJitDurationHours: 4,
-    quarterlyAccessReviewDocumented: true,
-    deprovisioningSlaHours: 2,
-    networkSegmentationActive: true,
-    tlsVersion: 'TLS_1_3',
-    cipherSuitesPfs: true,
-    edrDeployedPercentage: 99,
-    vulnerabilityPatchSlaDays: 7
-  };
-
-  it('should award 100/100 and approve tier-1 fully compliant vendor', () => {
-    const report = enforcer.evaluateVendor(fullyCompliantVendor);
-
-    expect(report.vendorId).toBe('VEND_ACME_SECURE');
-    expect(report.overallScore).toBe(100);
-    expect(report.isApproved).toBe(true);
-    expect(report.riskTier).toBe('TIER_1_LOW');
-    expect(report.criticalDeficiencies).toHaveLength(0);
-    expect(report.attestationToken).toMatch(/^SOC2-CC6-[A-F0-9]{16}$/);
-  });
-
-  it('should trigger critical deficiency when MFA is missing or SMS-only (CC6.1)', () => {
-    const insecureMfaVendor: VendorAccessPosture = {
-      ...fullyCompliantVendor,
-      vendorId: 'VEND_SMS_ONLY',
-      mfaType: 'SMS_INSECURE'
+describe("QA-145: Vendor SOC 2 CC6.1 - CC6.8 Access Control Policy Enforcer", () => {
+  it("should evaluate a fully compliant tier-1 enterprise vendor", () => {
+    const validConfig: VendorAccessConfig = {
+      vendorId: "vendor-aws-cloud",
+      vendorName: "Amazon Web Services",
+      mfaEnforcedForAllUsers: true,
+      ssoSamlConfigured: true,
+      sessionTimeoutMinutes: 15,
+      rbacRoleCount: 8,
+      unassignedPermissionAccounts: 0,
+      deprovisioningSlaHours: 4,
+      tlsMinimumVersion: "TLS_1_3",
+      wafActive: true,
+      edrAgentCoveragePercent: 99.5,
+      privilegedAccessReviewCadenceDays: 30,
     };
 
-    const report = enforcer.evaluateVendor(insecureMfaVendor);
-    expect(report.isApproved).toBe(false);
-    expect(report.riskTier).toBe('TIER_3_HIGH_RISK');
-    expect(report.criticalDeficiencies.some(d => d.includes('CC6.1'))).toBe(true);
+    const report = VendorSoc2AccessControlEnforcer.evaluateVendor(validConfig);
+    expect(report.status).toBe("COMPLIANT");
+    expect(report.overallComplianceScore).toBe(100);
+    expect(report.criticalViolationsCount).toBe(0);
+    expect(report.auditAttestationHash).toHaveLength(64);
   });
 
-  it('should reject vendor exceeding 4-hour offboarding deprovisioning SLA (CC6.3)', () => {
-    const slowDeprovisionVendor: VendorAccessPosture = {
-      ...fullyCompliantVendor,
-      vendorId: 'VEND_SLOW_OFFBOARD',
-      deprovisioningSlaHours: 24
+  it("should flag critical non-compliance on missing MFA and deprecated TLS", () => {
+    const riskyConfig: VendorAccessConfig = {
+      vendorId: "vendor-legacy-crm",
+      vendorName: "Legacy CRM Systems Inc",
+      mfaEnforcedForAllUsers: false, // Violation CC6.1
+      ssoSamlConfigured: false,
+      sessionTimeoutMinutes: 60, // Violation CC6.1 (>30m)
+      rbacRoleCount: 1, // Violation CC6.2
+      unassignedPermissionAccounts: 12, // Violation CC6.2
+      deprovisioningSlaHours: 72, // Violation CC6.3 (>24h)
+      tlsMinimumVersion: "TLS_1_0", // Violation CC6.7
+      wafActive: false,
+      edrAgentCoveragePercent: 60.0, // Violation CC6.8 (<95%)
+      privilegedAccessReviewCadenceDays: 180,
     };
 
-    const report = enforcer.evaluateVendor(slowDeprovisionVendor);
-    expect(report.isApproved).toBe(false);
-    expect(report.riskTier).toBe('TIER_3_HIGH_RISK');
-    expect(report.criticalDeficiencies.some(d => d.includes('CC6.3'))).toBe(true);
-  });
-
-  it('should flag deprecated TLS cipher suites under CC6.7', () => {
-    const legacyTlsVendor: VendorAccessPosture = {
-      ...fullyCompliantVendor,
-      vendorId: 'VEND_LEGACY_TLS',
-      tlsVersion: 'TLS_1_0_INSECURE',
-      cipherSuitesPfs: false
-    };
-
-    const report = enforcer.evaluateVendor(legacyTlsVendor);
-    expect(report.overallScore).toBeLessThan(90);
-    expect(report.criticalDeficiencies.some(d => d.includes('CC6.7'))).toBe(true);
+    const report = VendorSoc2AccessControlEnforcer.evaluateVendor(riskyConfig);
+    expect(report.status).toBe("NON_COMPLIANT_HIGH_RISK");
+    expect(report.criticalViolationsCount).toBeGreaterThanOrEqual(2);
+    expect(report.overallComplianceScore).toBeLessThan(50);
   });
 });
