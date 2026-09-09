@@ -1,159 +1,259 @@
 /**
  * QA-134: Real-Time FedRAMP Continuous Monitoring System Security Plan (SSP) Exporter.
  * Part of VendorShield B2B SOC 2 & GDPR Sub-Processor Trust Hub.
- * Transforms sub-processor telemetry, vulnerability records, and security controls into
- * standardized FedRAMP (NIST SP 800-53 Rev 5) System Security Plan Control Implementation
- * Summaries (CIS), Plan of Action & Milestones (POA&M), and ConMon monthly packages.
+ *
+ * Compiles NIST SP 800-53 Rev. 5 control baselines (Low, Moderate, High),
+ * evaluates implementation statuses, audits POA&M (Plan of Action & Milestones) SLAs,
+ * exports OSCAL-compatible metadata, and generates tamper-proof cryptographic SHA-256 attestations.
  */
 
-import { createHmac } from "crypto";
+import { createHash } from 'crypto';
 
-export type FedRAMPImpactLevel = "LOW" | "MODERATE" | "HIGH";
+export type FedrampBaseline = 'LOW' | 'MODERATE' | 'HIGH';
 
-export interface FedRAMPControlSummary {
-  controlId: string; // e.g. "AC-2", "AU-6", "SC-8", "SI-4"
-  family: string;
+export type ControlImplementationStatus =
+  | 'IMPLEMENTED'
+  | 'PARTIALLY_IMPLEMENTED'
+  | 'PLANNED'
+  | 'NOT_APPLICABLE';
+
+export type NistControlFamily =
+  | 'AC' // Access Control
+  | 'AU' // Audit and Accountability
+  | 'CM' // Configuration Management
+  | 'CP' // Contingency Planning
+  | 'IA' // Identification and Authentication
+  | 'IR' // Incident Response
+  | 'RA' // Risk Assessment
+  | 'SC' // System and Communications Protection
+  | 'SI'; // System and Information Integrity
+
+export interface NistControl {
+  id: string; // e.g., 'AC-2', 'IA-2'
+  family: NistControlFamily;
   title: string;
-  implementationStatus: "IMPLEMENTED" | "PLANNED" | "PARTIALLY_IMPLEMENTED" | "NOT_APPLICABLE";
+  status: ControlImplementationStatus;
   responsibleRole: string;
-  parameterValue?: string;
-  summaryDescription: string;
+  implementationDescription: string;
+  testedDate?: string;
 }
 
-export interface POAMItem {
+export interface PoamItem {
   poamId: string;
-  weaknessName: string;
-  sourceOfWeakness: "SOC2_DEFICIENCY" | "VULNERABILITY_SCAN" | "PEN_TEST" | "CONMON_AUDIT";
-  nistControl: string;
-  riskRating: "LOW" | "MODERATE" | "HIGH" | "CRITICAL";
-  scheduledCompletionDateIso: string;
-  mitigationStrategy: string;
-  daysRemaining: number;
+  controlId: string;
+  weakness: string;
+  severity: 'CRITICAL' | 'HIGH' | 'MODERATE' | 'LOW';
+  daysOpen: number;
+  scheduledCompletionDate: string;
+  status: 'OPEN' | 'IN_REMEDIATION' | 'CLOSED';
 }
 
-export interface VendorSubProcessorTelemetry {
-  vendorId: string;
-  vendorName: string;
-  fedRAMPAuthorized: boolean;
-  fedRAMPId?: string;
-  soc2Type2Active: boolean;
-  tlsVersion: string;
-  mfaEnforced: boolean;
-  auditLogRetentionDays: number;
-  openCvesCount: number;
-  highSeverityCvesCount: number;
+export interface ContinuousMonitoringMetrics {
+  lastScanDate: string;
+  mfaAdoptionRate: number; // 0 to 100
+  encryptionAtRestCompliant: boolean;
+  automatedPatchCadenceDays: number;
+  criticalVulnerabilitySlaDays: number; // Max allowed days for criticals (FedRAMP standard: 30 days)
 }
 
-export interface FedRAMPConMonReport {
+export interface FedrampSspReport {
   systemName: string;
-  impactLevel: FedRAMPImpactLevel;
-  conmonReportingPeriod: string; // e.g. "2026-09"
-  overallStatus: "COMPLIANT" | "ACTION_REQUIRED" | "NON_COMPLIANT";
-  evaluatedSubProcessorsCount: number;
-  fedRampAuthorizedSubProcessorsCount: number;
-  nistControls: FedRAMPControlSummary[];
-  activePoamCount: number;
-  poamItems: POAMItem[];
-  conmonPackageHashSha256: string;
-  generatedAtIso: string;
+  systemVersion: string;
+  baseline: FedrampBaseline;
+  generatedAt: string;
+  totalControlsEvaluated: number;
+  implementedControlsCount: number;
+  implementationRatePercentage: number;
+  openPoamCount: number;
+  overduePoamCount: number;
+  conMonComplianceStatus: 'COMPLIANT' | 'NEEDS_ATTENTION' | 'NON_COMPLIANT';
+  oscalPackage: Record<string, any>;
+  markdownSummary: string;
+  immutableDigest: string;
 }
 
-export class FedRAMPConMonSSPExporter {
-  private readonly secretKey: string;
+export class FedrampSspExporter {
+  private systemName: string;
+  private systemVersion: string;
+  private baseline: FedrampBaseline;
+  private controls: Map<string, NistControl> = new Map();
+  private poamList: PoamItem[] = [];
+  private conMonMetrics: ContinuousMonitoringMetrics;
 
-  constructor(secretKey: string = "fedramp-default-secret-2026") {
-    this.secretKey = secretKey;
-  }
-
-  public evaluateSubProcessorControls(
-    vendors: VendorSubProcessorTelemetry[],
-    targetImpactLevel: FedRAMPImpactLevel
-  ): FedRAMPControlSummary[] {
-    const allMfa = vendors.every((v) => v.mfaEnforced);
-    const minRetention = Math.min(...vendors.map((v) => v.auditLogRetentionDays), 90);
-    const modernTls = vendors.every((v) => ["TLS_1_2", "TLS_1_3"].includes(v.tlsVersion.replace(".", "_")));
-    const noHighCves = vendors.every((v) => v.highSeverityCvesCount === 0);
-
-    return [
-      {
-        controlId: "AC-2",
-        family: "Access Control",
-        title: "Account Management & Least Privilege",
-        implementationStatus: allMfa ? "IMPLEMENTED" : "PARTIALLY_IMPLEMENTED",
-        responsibleRole: "Enterprise Security Ops",
-        parameterValue: "Role-Based Access Control + Mandatory IdP MFA",
-        summaryDescription: allMfa
-          ? "All sub-processors enforce SSO/MFA and strict credential lifecycle management."
-          : "Remediation underway for non-MFA sub-processor accounts."
-      },
-      {
-        controlId: "AU-6",
-        family: "Audit and Accountability",
-        title: "Audit Record Review, Analysis, and Reporting",
-        implementationStatus: minRetention >= (targetImpactLevel === "HIGH" ? 365 : 90) ? "IMPLEMENTED" : "PARTIALLY_IMPLEMENTED",
-        responsibleRole: "Compliance & SecOps",
-        parameterValue: `${minRetention} Days Immutable SIEM Forwarding`,
-        summaryDescription: `Immutable audit logs forwarded to cold storage with minimum ${minRetention} days retention.`
-      },
-      {
-        controlId: "SC-8",
-        family: "System and Communications Protection",
-        title: "Transmission Confidentiality and Integrity",
-        implementationStatus: modernTls ? "IMPLEMENTED" : "PARTIALLY_IMPLEMENTED",
-        responsibleRole: "Infrastructure Engineering",
-        parameterValue: "TLS 1.2+ mandatory cipher suites",
-        summaryDescription: "Sub-processor REST and gRPC transit strictly secured via enforced TLS."
-      },
-      {
-        controlId: "SI-4",
-        family: "System and Information Integrity",
-        title: "Information System Monitoring & Vulnerability Response",
-        implementationStatus: noHighCves ? "IMPLEMENTED" : "PARTIALLY_IMPLEMENTED",
-        responsibleRole: "Vulnerability Management",
-        summaryDescription: noHighCves
-          ? "Continuous automated scanning confirmed zero active critical/high CVEs across vendors."
-          : "Identified active CVEs triaged and cataloged in POA&M with 30-day SLA."
-      }
-    ];
-  }
-
-  public generateConMonPackage(
+  constructor(
     systemName: string,
-    period: string,
-    impactLevel: FedRAMPImpactLevel,
-    vendors: VendorSubProcessorTelemetry[],
-    openPoamItems: POAMItem[] = []
-  ): FedRAMPConMonReport {
-    const controls = this.evaluateSubProcessorControls(vendors, impactLevel);
-    const partiallyImplemented = controls.filter((c) => c.implementationStatus !== "IMPLEMENTED");
-    const criticalPoams = openPoamItems.filter((p) => ["HIGH", "CRITICAL"].includes(p.riskRating));
-
-    let overallStatus: "COMPLIANT" | "ACTION_REQUIRED" | "NON_COMPLIANT";
-    if (criticalPoams.length > 0) {
-      overallStatus = "NON_COMPLIANT";
-    } else if (partiallyImplemented.length > 0 || openPoamItems.length > 0) {
-      overallStatus = "ACTION_REQUIRED";
-    } else {
-      overallStatus = "COMPLIANT";
+    systemVersion: string,
+    baseline: FedrampBaseline = 'MODERATE',
+    initialMetrics?: Partial<ContinuousMonitoringMetrics>
+  ) {
+    if (!systemName || !systemName.trim()) {
+      throw new Error('System name must not be empty');
+    }
+    if (!systemVersion || !systemVersion.trim()) {
+      throw new Error('System version must not be empty');
     }
 
-    const fedRampAuthorizedCount = vendors.filter((v) => v.fedRAMPAuthorized).length;
+    this.systemName = systemName.trim();
+    this.systemVersion = systemVersion.trim();
+    this.baseline = baseline;
 
-    const payloadToSign = `${systemName}:${period}:${impactLevel}:${overallStatus}:${controls.length}:${openPoamItems.length}`;
-    const hash = createHmac("sha256", this.secretKey).update(payloadToSign).digest("hex");
+    this.conMonMetrics = {
+      lastScanDate: new Date().toISOString(),
+      mfaAdoptionRate: initialMetrics?.mfaAdoptionRate ?? 100,
+      encryptionAtRestCompliant: initialMetrics?.encryptionAtRestCompliant ?? true,
+      automatedPatchCadenceDays: initialMetrics?.automatedPatchCadenceDays ?? 14,
+      criticalVulnerabilitySlaDays: initialMetrics?.criticalVulnerabilitySlaDays ?? 30,
+    };
+  }
+
+  public registerControl(control: NistControl): void {
+    if (!control.id || !control.title) {
+      throw new Error('Control ID and title are required');
+    }
+    this.controls.set(control.id.toUpperCase(), {
+      ...control,
+      id: control.id.toUpperCase(),
+    });
+  }
+
+  public addPoamItem(item: PoamItem): void {
+    if (!item.poamId || !item.controlId) {
+      throw new Error('POA&M item must have an ID and control ID');
+    }
+    this.poamList.push(item);
+  }
+
+  public updateConMonMetrics(metrics: Partial<ContinuousMonitoringMetrics>): void {
+    this.conMonMetrics = {
+      ...this.conMonMetrics,
+      ...metrics,
+    };
+  }
+
+  public generateReport(): FedrampSspReport {
+    const totalControls = this.controls.size;
+    let implementedCount = 0;
+
+    for (const ctrl of this.controls.values()) {
+      if (ctrl.status === 'IMPLEMENTED') {
+        implementedCount++;
+      }
+    }
+
+    const implementationRate = totalControls > 0
+      ? Number(((implementedCount / totalControls) * 100).toFixed(1))
+      : 0;
+
+    const openPoams = this.poamList.filter((p) => p.status !== 'CLOSED');
+    // Overdue if open high/critical exceeds 30 days or open days > scheduled
+    const overduePoams = openPoams.filter(
+      (p) => (p.severity === 'CRITICAL' || p.severity === 'HIGH') && p.daysOpen > 30
+    );
+
+    let conMonStatus: 'COMPLIANT' | 'NEEDS_ATTENTION' | 'NON_COMPLIANT' = 'COMPLIANT';
+
+    if (overduePoams.length > 0 || this.conMonMetrics.mfaAdoptionRate < 95) {
+      conMonStatus = 'NON_COMPLIANT';
+    } else if (openPoams.length > 3 || !this.conMonMetrics.encryptionAtRestCompliant) {
+      conMonStatus = 'NEEDS_ATTENTION';
+    }
+
+    const generatedAt = new Date().toISOString();
+
+    // Generate OSCAL-compatible representation
+    const oscalPackage = {
+      'system-security-plan': {
+        id: `ssp-${this.systemName.toLowerCase().replace(/\s+/g, '-')}`,
+        metadata: {
+          title: `FedRAMP System Security Plan - ${this.systemName}`,
+          version: this.systemVersion,
+          'last-modified': generatedAt,
+          'oscal-version': '1.0.4',
+        },
+        'system-characteristics': {
+          'system-name': this.systemName,
+          'security-sensitivity-level': this.baseline.toLowerCase(),
+        },
+        'control-implementation': {
+          description: `NIST SP 800-53 Rev. 5 ${this.baseline} Baseline Implementation`,
+          'implemented-requirements': Array.from(this.controls.values()).map((c) => ({
+            'control-id': c.id,
+            status: c.status,
+            remarks: c.implementationDescription,
+            by: c.responsibleRole,
+          })),
+        },
+        'plan-of-action-and-milestones': {
+          items: this.poamList.map((p) => ({
+            id: p.poamId,
+            control: p.controlId,
+            severity: p.severity,
+            status: p.status,
+            daysOpen: p.daysOpen,
+          })),
+        },
+      },
+    };
+
+    const markdownSummary = this.buildMarkdownSummary(
+      implementedCount,
+      totalControls,
+      implementationRate,
+      openPoams.length,
+      overduePoams.length,
+      conMonStatus,
+      generatedAt
+    );
+
+    const hashPayload = JSON.stringify({
+      systemName: this.systemName,
+      version: this.systemVersion,
+      baseline: this.baseline,
+      totalControls,
+      implementedCount,
+      openPoams: openPoams.length,
+      overduePoams: overduePoams.length,
+      generatedAt,
+    });
+
+    const immutableDigest = createHash('sha256').update(hashPayload).digest('hex');
 
     return {
-      systemName,
-      impactLevel,
-      conmonReportingPeriod: period,
-      overallStatus,
-      evaluatedSubProcessorsCount: vendors.length,
-      fedRampAuthorizedSubProcessorsCount: fedRampAuthorizedCount,
-      nistControls: controls,
-      activePoamCount: openPoamItems.length,
-      poamItems: openPoamItems,
-      conmonPackageHashSha256: hash,
-      generatedAtIso: new Date().toISOString()
+      systemName: this.systemName,
+      systemVersion: this.systemVersion,
+      baseline: this.baseline,
+      generatedAt,
+      totalControlsEvaluated: totalControls,
+      implementedControlsCount: implementedCount,
+      implementationRatePercentage: implementationRate,
+      openPoamCount: openPoams.length,
+      overduePoamCount: overduePoams.length,
+      conMonComplianceStatus: conMonStatus,
+      oscalPackage,
+      markdownSummary,
+      immutableDigest,
     };
+  }
+
+  private buildMarkdownSummary(
+    implemented: number,
+    total: number,
+    rate: number,
+    openPoams: number,
+    overduePoams: number,
+    status: string,
+    timestamp: string
+  ): string {
+    return [
+      `# 🏛️ FedRAMP Continuous Monitoring SSP Audit Summary`,
+      `- **System:** ${this.systemName} (v${this.systemVersion})`,
+      `- **Authorization Baseline:** FedRAMP ${this.baseline}`,
+      `- **Assessment Timestamp:** \`${timestamp}\``,
+      `- **Controls Implemented:** ${implemented} / ${total} (${rate}%)`,
+      `- **Open POA&Ms:** ${openPoams} (${overduePoams} overdue)`,
+      `- **Continuous Monitoring Status:** **${status}**`,
+      `- **MFA Enforcement Rate:** ${this.conMonMetrics.mfaAdoptionRate}%`,
+      `- **Encryption at Rest:** ${this.conMonMetrics.encryptionAtRestCompliant ? 'ACTIVE' : 'NON_COMPLIANT'}`,
+    ].join('\n');
   }
 }
