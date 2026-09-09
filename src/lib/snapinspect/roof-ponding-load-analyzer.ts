@@ -8,7 +8,7 @@
  * assess structural deck deflection limits, and determine ponding progressive collapse instability risk.
  */
 
-import { createHash } from "node:crypto";
+import { createHash } from "crypto";
 
 export type PondingRiskLevel = "SAFE" | "MONITOR_DRAINAGE" | "STRUCTURAL_OVERLOAD_RISK" | "IMMINENT_PONDING_INSTABILITY";
 
