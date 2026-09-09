@@ -1,61 +1,83 @@
-/**
- * Unit tests for SNAP-35: High-Precision Laser Distance Meter Bluetooth Telemetry Stream Ingestor.
- * Part of SnapInspect AI Tactical Field Inspection CAD & Mobile Voice AI.
- */
-
 import { describe, it, expect } from "vitest";
-import { LaserDistanceBleIngestor, BleRawTelemetryPacket } from "./laser-distance-ble-ingestor";
+import {
+  LaserDistanceBleIngestor,
+  type BleGattPacket,
+} from "./laser-distance-ble-ingestor";
 
-describe("LaserDistanceBleIngestor (SNAP-35)", () => {
-  const ingestor = new LaserDistanceBleIngestor();
+describe("SNAP-35: High-Precision Laser Distance Meter Bluetooth Telemetry Stream Ingestor", () => {
+  it("should decode a valid Bosch GLM packet with distance and tilt angle", () => {
+    // 10 bytes: [Header(0xAA), Status(0x00=OK), DistInt32LE(4520mm = 4.520m), AngleInt16LE(300 = 30.0 deg), Battery(88%)]
+    const buffer = new Uint8Array(9);
+    const view = new DataView(buffer.buffer);
+    view.setUint8(0, 0xaa);
+    view.setUint8(1, 0x00); // OK
+    view.setInt32(2, 4520, true); // 4520 mm
+    view.setInt16(6, 300, true); // 30.0 degrees inclination
+    view.setUint8(8, 88); // 88% battery
 
-  it("decodes Bosch GLM packet (mm representation + tilt angle)", () => {
-    // 3,450 mm = 0x0D7A -> [0x7A, 0x0D, 0x00, 0x00]
-    // 15.5 deg tilt = 155 = 0x009B -> [0x9B, 0x00]
-    const packet: BleRawTelemetryPacket = {
-      deviceMac: "AA:BB:CC:DD:EE:01",
-      manufacturer: "BOSCH_GLM",
-      rawBytes: [0x7A, 0x0D, 0x00, 0x00, 0x9B, 0x00],
-      timestampMs: 1725840000000
+    const packet: BleGattPacket = {
+      deviceUuid: "BOSCH-GLM50C-8821",
+      manufacturer: "BOSCH",
+      rawBytes: buffer,
+      rssi: -62,
+      timestampMs: 1725840000000,
     };
 
-    const decoded = ingestor.decodePacket(packet, -60);
-    expect(decoded.deviceMac).toBe("AA:BB:CC:DD:EE:01");
-    expect(decoded.distanceMeters).toBe(3.45);
-    expect(decoded.distanceFeet).toBeCloseTo(11.319, 2);
-    expect(decoded.inclinationDeg).toBe(15.5);
-    expect(decoded.measurementQuality).toBe("EXCELLENT");
+    const measurement = LaserDistanceBleIngestor.decodePacket(packet);
+
+    expect(measurement.status).toBe("OK");
+    expect(measurement.distanceMeters).toBe(4.52);
+    expect(measurement.distanceMillimeters).toBe(4520);
+    expect(measurement.inclinationDegrees).toBe(30.0);
+    // sin(30 deg) * 4.52m = 0.5 * 4.52 = 2.26m
+    expect(measurement.indirectHeightMeters).toBe(2.26);
+    expect(measurement.batteryPercent).toBe(88);
+    expect(measurement.telemetryHash).toHaveLength(64);
   });
 
-  it("decodes Generic GATT characteristic (cm representation)", () => {
-    // 425 cm = 4.25m = 0x01A9 -> [0xA9, 0x01]
-    const packet: BleRawTelemetryPacket = {
-      deviceMac: "AA:BB:CC:DD:EE:02",
-      manufacturer: "GENERIC_GATT",
-      rawBytes: [0xA9, 0x01],
-      timestampMs: 1725840000000
+  it("should handle error status code from device", () => {
+    const buffer = new Uint8Array(9);
+    const view = new DataView(buffer.buffer);
+    view.setUint8(0, 0xaa);
+    view.setUint8(1, 0x01); // TARGET_TOO_DARK
+    view.setInt32(2, 0, true);
+
+    const packet: BleGattPacket = {
+      deviceUuid: "BOSCH-GLM50C-8821",
+      manufacturer: "BOSCH",
+      rawBytes: buffer,
+      rssi: -80,
+      timestampMs: 1725840001000,
     };
 
-    const decoded = ingestor.decodePacket(packet, -88);
-    expect(decoded.distanceMeters).toBe(4.25);
-    expect(decoded.measurementQuality).toBe("LOW_SIGNAL_WARNING");
+    const measurement = LaserDistanceBleIngestor.decodePacket(packet);
+    expect(measurement.status).toBe("TARGET_TOO_DARK");
+    expect(measurement.distanceMeters).toBe(0);
   });
 
-  it("reconciles laser measurement against CAD segment within tolerance", () => {
-    const res = ingestor.reconcileCadWallSegment(5.02, 5.00, 0.05);
-    expect(res.status).toBe("MATCH");
-    expect(res.deltaMeters).toBe(0.02);
+  it("should bind measurement to CAD wall vector correctly", () => {
+    const measurement = {
+      deviceUuid: "LEICA-DISTO-D2",
+      manufacturer: "LEICA",
+      distanceMeters: 5.0,
+      distanceMillimeters: 5000,
+      distanceFeet: 16.4,
+      batteryPercent: 95,
+      status: "OK" as const,
+      telemetryHash: "hash-123",
+      indirectHeightMeters: 2.5,
+    };
 
-    const outOfTolerance = ingestor.reconcileCadWallSegment(5.25, 5.00, 0.05);
-    expect(outOfTolerance.status).toBe("OUT_OF_TOLERANCE");
-    expect(outOfTolerance.deltaMeters).toBe(0.25);
-  });
+    const cadSegment = LaserDistanceBleIngestor.bindToCadSegment(
+      { x: 10.0, y: 10.0 },
+      measurement,
+      90.0 // straight North along Y axis
+    );
 
-  it("computes 3D room enclosure area and volume metrics", () => {
-    const metrics = ingestor.computeRoomMetrics(6.0, 4.0, 3.0);
-    expect(metrics.floorAreaSqMeters).toBe(24.0);
-    expect(metrics.floorAreaSqFt).toBeCloseTo(258.33, 1);
-    expect(metrics.wallAreaSqMeters).toBe(60.0);
-    expect(metrics.roomVolumeCubicMeters).toBe(72.0);
+    // cos(90) = 0, sin(90) = 1 -> endPoint: (10.0, 15.0)
+    expect(cadSegment.endPoint.x).toBe(10.0);
+    expect(cadSegment.endPoint.y).toBe(15.0);
+    expect(cadSegment.lengthMeters).toBe(5.0);
+    expect(cadSegment.elevationDeltaMeters).toBe(2.5);
   });
 });
