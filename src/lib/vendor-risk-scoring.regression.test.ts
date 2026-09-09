@@ -1,85 +1,89 @@
+/**
+ * Regression Test Suite for QA-131: Continuous Automated Vendor Risk Scoring & Multi-Cloud Alerting Webhook.
+ * Part of VendorShield B2B SOC 2 & GDPR Sub-Processor Trust Hub.
+ */
+
 import { describe, it, expect } from "vitest";
 import {
-  VendorRiskScoringEngine,
-  VendorRiskInput,
+  VendorRiskScorer,
+  SecurityIncidentSignal,
+  VendorRiskLevel
 } from "./vendor-risk-scoring";
 
-describe("QA-131: VendorRiskScoringEngine Regression Matrix", () => {
-  const engine = new VendorRiskScoringEngine("test_secure_hmac_secret");
-
-  it("calculates low risk score for fully attested SOC 2 / ISO compliant vendor", () => {
-    const input: VendorRiskInput = {
-      vendorId: "v_stripe",
-      vendorName: "Stripe, Inc.",
-      tier: "TIER_1_CRITICAL",
-      cloudProviders: ["AWS"],
-      dataResidencyCompliant: true,
-      hasSoc2Type2: true,
-      hasIso27001: true,
-      dpaSigned: true,
-      unresolvedCveCount: 0,
-      maxCvssScore: 0.0,
-      uptimeSlaPct: 99.99,
-    };
-
-    const res = engine.calculateRisk(input);
-    expect(res.riskScore).toBe(35); // Base 10 + Tier1 25
-    expect(res.riskCategory).toBe("MODERATE");
-    expect(res.alertRequired).toBe(false);
+describe("QA-131: Continuous Automated Vendor Risk Scoring & Multi-Cloud Alerting Webhook", () => {
+  it("classifies risk scores into appropriate risk levels", () => {
+    expect(VendorRiskScorer.determineLevel(10)).toBe("LOW");
+    expect(VendorRiskScorer.determineLevel(35)).toBe("MEDIUM");
+    expect(VendorRiskScorer.determineLevel(55)).toBe("HIGH");
+    expect(VendorRiskScorer.determineLevel(85)).toBe("CRITICAL");
   });
 
-  it("escalates to P1_CRITICAL when residency violations, missing DPA, and critical CVEs exist", () => {
-    const input: VendorRiskInput = {
-      vendorId: "v_rogue_sub",
-      vendorName: "Rogue Cloud Services",
-      tier: "TIER_1_CRITICAL",
-      cloudProviders: ["AWS", "GCP"],
-      dataResidencyCompliant: false, // +25
-      hasSoc2Type2: false, // +20
-      hasIso27001: false, // +10
-      dpaSigned: false, // +20
-      unresolvedCveCount: 5, // +10
-      maxCvssScore: 9.8, // +30
-      uptimeSlaPct: 97.5, // +15
-    };
+  it("calculates cumulative dynamic risk penalty clamped to 100", () => {
+    const signals: SecurityIncidentSignal[] = [
+      {
+        signalId: "sig-1",
+        vendorId: "v-1",
+        vendorName: "Cloud Vendor",
+        incidentType: "SOC2_LAPSE",
+        severityScore: 25,
+        description: "SOC 2 Type II expired without bridge letter",
+        detectedAtIso: new Date().toISOString(),
+      },
+      {
+        signalId: "sig-2",
+        vendorId: "v-1",
+        vendorName: "Cloud Vendor",
+        incidentType: "CVE_CRITICAL",
+        severityScore: 35,
+        description: "Zero-day vulnerability reported in API gateway",
+        detectedAtIso: new Date().toISOString(),
+      }
+    ];
 
-    const res = engine.calculateRisk(input);
-    expect(res.riskScore).toBe(100);
-    expect(res.riskCategory).toBe("CRITICAL");
-    expect(res.alertRequired).toBe(true);
-    expect(res.severity).toBe("P1_CRITICAL");
-    expect(res.contributingFactors.length).toBeGreaterThan(4);
+    const score = VendorRiskScorer.calculateDynamicScore(20, signals);
+    expect(score).toBe(80); // 20 + 25 + 35 = 80
   });
 
-  it("generates and cryptographically verifies multi-cloud webhook payloads", () => {
-    const input: VendorRiskInput = {
-      vendorId: "v_alert_needed",
-      vendorName: "Legacy DB Provider",
-      tier: "TIER_2_SIGNIFICANT",
-      cloudProviders: ["AZURE", "GCP"],
-      dataResidencyCompliant: true,
-      hasSoc2Type2: false,
-      hasIso27001: false,
-      dpaSigned: true,
-      unresolvedCveCount: 4,
-      maxCvssScore: 7.8,
-      uptimeSlaPct: 99.1,
+  it("triggers HMAC-signed multi-cloud escalation alert on escalation to CRITICAL", () => {
+    const criticalSignal: SecurityIncidentSignal = {
+      signalId: "sig-breach",
+      vendorId: "v-cdn",
+      vendorName: "Edge CDN Global",
+      incidentType: "DATA_BREACH",
+      severityScore: 60,
+      description: "Confirmed exfiltration incident reported",
+      detectedAtIso: new Date().toISOString(),
     };
 
-    const risk = engine.calculateRisk(input);
-    const payload = engine.createWebhookPayload("tenant_acme_eu", risk, input.cloudProviders);
+    const result = VendorRiskScorer.evaluateVendorRisk(
+      "v-cdn",
+      "Edge CDN Global",
+      25, // Base: LOW/MEDIUM
+      "MEDIUM",
+      [criticalSignal],
+      "super_secret_webhook_key"
+    );
 
-    expect(payload.tenantId).toBe("tenant_acme_eu");
-    expect(payload.vendorId).toBe("v_alert_needed");
-    expect(payload.affectedCloudProviders).toEqual(["AZURE", "GCP"]);
-    expect(payload.signatureHmacSha256).toMatch(/^[a-f0-9]{64}$/);
+    expect(result.updatedState.currentLevel).toBe("CRITICAL");
+    expect(result.escalationAlert).not.toBeNull();
+    expect(result.escalationAlert?.eventType).toBe("VENDOR_RISK_ESCALATION");
+    expect(result.escalationAlert?.destinationChannels).toContain("PAGERDUTY");
+    expect(result.escalationAlert?.destinationChannels).toContain("SLACK");
+    expect(result.escalationAlert?.hmacSignatureHex).toBeDefined();
+    expect(result.escalationAlert?.hmacSignatureHex.length).toBe(64);
+  });
 
-    // Verify authenticity
-    const isValid = engine.verifyWebhookSignature(payload);
-    expect(isValid).toBe(true);
+  it("does not trigger escalation alert when risk stays within same level", () => {
+    const result = VendorRiskScorer.evaluateVendorRisk(
+      "v-stable",
+      "Stable Storage Corp",
+      15,
+      "LOW",
+      [], // No new incidents
+      "secret"
+    );
 
-    // Tampering test
-    const tamperedPayload = { ...payload, riskScore: 10 };
-    expect(engine.verifyWebhookSignature(tamperedPayload)).toBe(false);
+    expect(result.updatedState.currentLevel).toBe("LOW");
+    expect(result.escalationAlert).toBeNull();
   });
 });
