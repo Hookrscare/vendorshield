@@ -158,7 +158,7 @@ export class ConcreteSlabMoistureProfiler {
     }
 
     const meanRHPercent = Math.round((sumRH / probes.length) * 10) / 10;
-    const maxRH = Math.max(...probes.map((p) => p.relativeHumidityPercent));
+    const maxRHPercent = maxRH;
     const meanEstimatedMVER = Math.round((sumMVER / probes.length) * 100) / 100;
     const allProbesCompliant = sensorAnalyses.every((s) => s.warrantyCompliant);
 
@@ -180,7 +180,7 @@ export class ConcreteSlabMoistureProfiler {
       dryingCondition,
       probeCount: probes.length,
       meanRHPercent,
-      maxRHPercent: maxRH,
+      maxRHPercent,
       meanEstimatedMVER,
       allProbesCompliant,
       dominantRiskClassification,
