@@ -1,65 +1,90 @@
+/**
+ * QA-137: Real-Time B2B Security Questionnaire AI Auto-Completion Assistant.
+ * Regression Tests.
+ */
+
 import { describe, it, expect } from "vitest";
 import {
   SecurityQuestionnaireAssistant,
-  SecurityQuestionInput,
+  InboundQuestion,
+  VERIFIED_EVIDENCE_VAULT
 } from "./security-questionnaire-assistant";
 
-describe("QA-137: Real-Time B2B Security Questionnaire AI Auto-Completion Assistant", () => {
-  it("accurately auto-completes encryption question with citations and high confidence", () => {
-    const q: SecurityQuestionInput = {
-      questionId: "sec-01",
-      questionText: "Do you encrypt customer data at rest and in transit, and what is your key management policy?",
+describe("QA-137: SecurityQuestionnaireAssistant", () => {
+  const assistant = new SecurityQuestionnaireAssistant();
+
+  it("auto-completes encryption question with high confidence and exact SOC 2 anchor", () => {
+    const question: InboundQuestion = {
+      id: "q-101",
+      questionText: "How is customer data encrypted at rest and what key management protocols are used?",
+      framework: "SOC2"
     };
 
-    const answer = SecurityQuestionnaireAssistant.answerSingleQuestion(q);
-    expect(answer.questionId).toBe("sec-01");
-    expect(answer.matchedDomain).toBe("ENCRYPTION_AND_KEY_MANAGEMENT");
-    expect(answer.suggestedAnswer).toContain("TLS 1.3");
-    expect(answer.suggestedAnswer).toContain("AES-256");
-    expect(answer.auditCitation).toContain("SOC 2 Type II");
-    expect(answer.confidenceScore).toBeGreaterThanOrEqual(0.85);
-    expect(answer.status).toBe("AUTO_ANSWERED");
-    expect(answer.requiresHumanReview).toBe(false);
+    const answer = assistant.answerQuestion(question);
+    expect(answer.reviewStatus).toBe("AUTO_APPROVED");
+    expect(answer.confidenceScore).toBeGreaterThanOrEqual(0.75);
+    expect(answer.matchedEvidenceId).toBe("EV-ENC-01");
+    expect(answer.evidenceAnchor).toContain("CC6.1-ENCRYPTION");
+    expect(answer.generatedAnswer).toContain("AES-256");
   });
 
-  it("accurately auto-completes vendor risk and sub-processor questions", () => {
-    const q: SecurityQuestionInput = {
-      questionId: "sec-02",
-      questionText: "How do you evaluate third party vendor risk and do you sign DPAs with sub-processors?",
+  it("correctly identifies multi-factor authentication controls for ISO 27001", () => {
+    const question: InboundQuestion = {
+      id: "q-102",
+      questionText: "Do you enforce MFA and SAML 2.0 SSO with RBAC access control?",
+      framework: "ISO27001"
     };
 
-    const answer = SecurityQuestionnaireAssistant.answerSingleQuestion(q);
-    expect(answer.matchedDomain).toBe("SUB_PROCESSOR_AND_VENDOR_RISK");
-    expect(answer.suggestedAnswer).toContain("Standard Contractual Clauses");
-    expect(answer.auditCitation).toContain("ISO 27001");
-    expect(answer.status).toBe("AUTO_ANSWERED");
+    const answer = assistant.answerQuestion(question);
+    expect(answer.reviewStatus).toBe("AUTO_APPROVED");
+    expect(answer.matchedEvidenceId).toBe("EV-AUTH-02");
+    expect(answer.evidenceAnchor).toContain("A.9.2-AUTHENTICATION");
   });
 
-  it("flags obscure or unknown questions for human review", () => {
-    const q: SecurityQuestionInput = {
-      questionId: "sec-unknown",
-      questionText: "Does your office building have armed guards at the parking lot entrance gate?",
+  it("flags ambiguous or unknown questions for human CISO review", () => {
+    const question: InboundQuestion = {
+      id: "q-103",
+      questionText: "What is your internal cafeteria biometric thumbprint scanning policy?",
+      framework: "CUSTOM"
     };
 
-    const answer = SecurityQuestionnaireAssistant.answerSingleQuestion(q);
-    expect(answer.confidenceScore).toBeLessThan(0.50);
-    expect(answer.status).toBe("NEEDS_REVIEW");
-    expect(answer.requiresHumanReview).toBe(true);
+    const answer = assistant.answerQuestion(question);
+    expect(answer.reviewStatus).toBe("REQUIRES_HUMAN_REVIEW");
+    expect(answer.confidenceScore).toBeLessThan(0.5);
+    expect(answer.matchedEvidenceId).toBe("NONE");
   });
 
-  it("processes batch questionnaire and outputs verified package with sha256 checksum", () => {
-    const questions: SecurityQuestionInput[] = [
-      { questionId: "q1", questionText: "What is your MFA policy?" },
-      { questionId: "q2", questionText: "Tell us about your disaster recovery plan and RTO/RPO." },
-      { questionId: "q3", questionText: "What is the square footage of your data center server racks?" },
+  it("processes a complete multi-domain questionnaire with audit signature and metrics", () => {
+    const questions: InboundQuestion[] = [
+      {
+        id: "q-1",
+        questionText: "How is data encrypted at rest and in transit?",
+        framework: "SOC2"
+      },
+      {
+        id: "q-2",
+        questionText: "What are your RPO and RTO disaster recovery targets?",
+        framework: "SOC2"
+      },
+      {
+        id: "q-3",
+        questionText: "How often are third-party penetration tests executed?",
+        framework: "ISO27001"
+      },
+      {
+        id: "q-4",
+        questionText: "What is your custom drone perimeter defense policy?",
+        framework: "CUSTOM"
+      }
     ];
 
-    const pkg = SecurityQuestionnaireAssistant.completeQuestionnaire("tenant-enterprise-99", questions);
-    expect(pkg.tenantId).toBe("tenant-enterprise-99");
-    expect(pkg.totalQuestions).toBe(3);
-    expect(pkg.autoAnsweredCount).toBe(2);
-    expect(pkg.humanReviewCount).toBe(1);
-    expect(pkg.automationCoveragePct).toBe(66.7);
-    expect(pkg.verificationSha256).toMatch(/^[a-f0-9]{64}$/);
+    const summary = assistant.processQuestionnaire("quest-2026-acme", "org-acme-corp", questions);
+
+    expect(summary.totalQuestions).toBe(4);
+    expect(summary.autoApprovedCount).toBe(3);
+    expect(summary.reviewRequiredCount).toBe(1);
+    expect(summary.completionRatePercent).toBe(75);
+    expect(summary.auditSignature).toMatch(/^VS-ASSIST-[A-F0-9]{16}$/);
+    expect(summary.averageConfidence).toBeGreaterThan(0.6);
   });
 });
