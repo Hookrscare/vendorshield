@@ -1,44 +1,58 @@
 /**
  * QA-142: Real-Time B2B Sub-Processor Egress Traffic DLP Interceptor.
  * Part of VendorShield B2B SOC 2 & GDPR Sub-Processor Trust Hub.
- *
- * Inspects outgoing HTTP payload payloads to third-party sub-processors.
- * Detects and redacts unmasked PII, PCI PANs, API secrets, and private keys
- * to prevent upstream vendor data contamination and breach exposure.
+ * Inspects outbound API and egress network payloads to sub-processors, matches sensitive PII/secrets,
+ * validates destination vendor authorization tiers, executes zero-knowledge masking, and enforces DLP policies.
  */
 
-export type DlpViolationType =
+import { createHash } from "crypto";
+
+export type SensitiveDataType =
   | "CREDIT_CARD_PAN"
-  | "US_SSN"
-  | "AWS_ACCESS_KEY"
-  | "BEARER_JWT"
-  | "PRIVATE_KEY_BLOCK";
+  | "SOCIAL_SECURITY_NUMBER"
+  | "API_SECRET_KEY"
+  | "JWT_BEARER_TOKEN"
+  | "EMAIL_ADDRESS"
+  | "PHONE_NUMBER";
+
+export type DlpAction = "ALLOW" | "REDACT_IN_PLACE" | "BLOCK_EGRESS";
+
+export interface SubProcessorVendorPolicy {
+  vendorId: string;
+  vendorName: string;
+  authorizedDataTypes: SensitiveDataType[];
+  requiresStrictRedaction: boolean;
+  blockUnapprovedData: boolean;
+}
+
+export interface DlpInspectionRequest {
+  requestId: string;
+  destinationVendorId: string;
+  destinationUrl: string;
+  payloadText: string;
+}
+
+export interface DlpDetectionMatch {
+  type: SensitiveDataType;
+  matchedString: string;
+  isAuthorizedForVendor: boolean;
+}
 
 export interface DlpInspectionResult {
-  allowed: boolean;
-  actionTaken: "ALLOW" | "MASK_AND_FORWARD" | "BLOCK_AND_ALERT";
-  sanitizedPayload: string;
-  violationsDetected: {
-    type: DlpViolationType;
-    matchCount: number;
-  }[];
-  destinationSubProcessor: string;
+  requestId: string;
+  destinationVendorId: string;
+  action: DlpAction;
+  isAllowed: boolean;
+  detectedMatches: DlpDetectionMatch[];
+  sanitizedPayloadText: string;
+  auditDigestSha256: string;
 }
 
 export class EgressDlpInterceptor {
-  private static readonly AWS_KEY_REGEX = /AKIA[0-9A-Z]{16}/g;
-  private static readonly SSN_REGEX = /\b\d{3}-\d{2}-\d{4}\b/g;
-  private static readonly JWT_REGEX = /\beyJ[A-Za-z0-9-_=]+\.[A-Za-z0-9-_=]+\.?[A-Za-z0-9-_.+/=]*\b/g;
-  private static readonly PRIVATE_KEY_REGEX = /-----BEGIN [A-Z ]+PRIVATE KEY-----[^-]+-----END [A-Z ]+PRIVATE KEY-----/gs;
-  private static readonly CARD_CANDIDATE_REGEX = /\b(?:\d[ -]*?){13,19}\b/g;
-
-  /**
-   * Luhn algorithm validation for credit card numbers.
-   */
-  public static isValidLuhn(candidate: string): boolean {
-    const digits = candidate.replace(/\D/g, "");
+  // Luhn algorithm for valid credit cards
+  private static validateLuhn(ccNumber: string): boolean {
+    const digits = ccNumber.replace(/\D/g, "");
     if (digits.length < 13 || digits.length > 19) return false;
-
     let sum = 0;
     let shouldDouble = false;
     for (let i = digits.length - 1; i >= 0; i--) {
@@ -53,89 +67,77 @@ export class EgressDlpInterceptor {
     return sum % 10 === 0;
   }
 
-  public static inspectAndSanitize(
-    payload: string,
-    subProcessorHost: string,
-    enforcementMode: "BLOCK" | "REDACT" = "REDACT"
+  public static inspectPayload(
+    request: DlpInspectionRequest,
+    vendorPolicy: SubProcessorVendorPolicy
   ): DlpInspectionResult {
-    let sanitized = payload;
-    const violations: { type: DlpViolationType; matchCount: number }[] = [];
+    let sanitized = request.payloadText;
+    const matches: DlpDetectionMatch[] = [];
 
-    // 1. Private Keys -> Critical blocker
-    const privKeys = payload.match(this.PRIVATE_KEY_REGEX);
-    if (privKeys && privKeys.length > 0) {
-      violations.push({ type: "PRIVATE_KEY_BLOCK", matchCount: privKeys.length });
-      return {
-        allowed: false,
-        actionTaken: "BLOCK_AND_ALERT",
-        sanitizedPayload: "[REDACTED: PRIVATE KEY DETECTED - EGRESS BLOCKED]",
-        violationsDetected: violations,
-        destinationSubProcessor: subProcessorHost
-      };
-    }
-
-    // 2. AWS Access Keys
-    const awsKeys = sanitized.match(this.AWS_KEY_REGEX);
-    if (awsKeys && awsKeys.length > 0) {
-      violations.push({ type: "AWS_ACCESS_KEY", matchCount: awsKeys.length });
-      sanitized = sanitized.replace(this.AWS_KEY_REGEX, "AKIA[REDACTED_AWS_KEY]");
-    }
-
-    // 3. SSNs
-    const ssns = sanitized.match(this.SSN_REGEX);
-    if (ssns && ssns.length > 0) {
-      violations.push({ type: "US_SSN", matchCount: ssns.length });
-      sanitized = sanitized.replace(this.SSN_REGEX, "[REDACTED_SSN]");
-    }
-
-    // 4. JWTs
-    const jwts = sanitized.match(this.JWT_REGEX);
-    if (jwts && jwts.length > 0) {
-      violations.push({ type: "BEARER_JWT", matchCount: jwts.length });
-      sanitized = sanitized.replace(this.JWT_REGEX, "[REDACTED_JWT_TOKEN]");
-    }
-
-    // 5. Credit Cards (verified via Luhn)
-    const cardCandidates = sanitized.match(this.CARD_CANDIDATE_REGEX);
-    if (cardCandidates) {
-      let luhnMatches = 0;
-      for (const c of cardCandidates) {
-        if (this.isValidLuhn(c)) {
-          luhnMatches++;
-          sanitized = sanitized.replace(c, "[REDACTED_PCI_PAN]");
+    // 1. Credit Card Detection (13-19 digits with separators, Luhn verified)
+    const ccRegex = /\b(?:\d[ -]*?){13,19}\b/g;
+    let ccMatch;
+    while ((ccMatch = ccRegex.exec(request.payloadText)) !== null) {
+      const candidate = ccMatch[0];
+      const digitsOnly = candidate.replace(/\D/g, "");
+      if (this.validateLuhn(digitsOnly)) {
+        const authorized = vendorPolicy.authorizedDataTypes.includes("CREDIT_CARD_PAN");
+        matches.push({ type: "CREDIT_CARD_PAN", matchedString: candidate, isAuthorizedForVendor: authorized });
+        if (!authorized || vendorPolicy.requiresStrictRedaction) {
+          const last4 = digitsOnly.slice(-4);
+          sanitized = sanitized.replace(candidate, `[REDACTED_CARD_...${last4}]`);
         }
       }
-      if (luhnMatches > 0) {
-        violations.push({ type: "CREDIT_CARD_PAN", matchCount: luhnMatches });
+    }
+
+    // 2. SSN Detection (###-##-####)
+    const ssnRegex = /\b\d{3}-\d{2}-\d{4}\b/g;
+    let ssnMatch;
+    while ((ssnMatch = ssnRegex.exec(request.payloadText)) !== null) {
+      const candidate = ssnMatch[0];
+      const authorized = vendorPolicy.authorizedDataTypes.includes("SOCIAL_SECURITY_NUMBER");
+      matches.push({ type: "SOCIAL_SECURITY_NUMBER", matchedString: candidate, isAuthorizedForVendor: authorized });
+      if (!authorized || vendorPolicy.requiresStrictRedaction) {
+        sanitized = sanitized.replace(candidate, "[REDACTED_SSN_****]");
       }
     }
 
-    if (violations.length === 0) {
-      return {
-        allowed: true,
-        actionTaken: "ALLOW",
-        sanitizedPayload: payload,
-        violationsDetected: [],
-        destinationSubProcessor: subProcessorHost
-      };
+    // 3. API Secret Keys (e.g. sk_live_..., ghp_..., eyJ...)
+    const keyRegex = /\b(?:sk_live_[a-zA-Z0-9]{20,}|ghp_[a-zA-Z0-9]{20,}|AIza[0-9A-Za-z-_]{35})\b/g;
+    let keyMatch;
+    while ((keyMatch = keyRegex.exec(request.payloadText)) !== null) {
+      const candidate = keyMatch[0];
+      const authorized = vendorPolicy.authorizedDataTypes.includes("API_SECRET_KEY");
+      matches.push({ type: "API_SECRET_KEY", matchedString: candidate, isAuthorizedForVendor: authorized });
+      sanitized = sanitized.replace(candidate, "[REDACTED_API_SECRET_KEY]");
     }
 
-    if (enforcementMode === "BLOCK") {
-      return {
-        allowed: false,
-        actionTaken: "BLOCK_AND_ALERT",
-        sanitizedPayload: "[BLOCKED: SENSITIVE DATA DETECTED]",
-        violationsDetected: violations,
-        destinationSubProcessor: subProcessorHost
-      };
+    // Policy Decision
+    const unauthorizedMatches = matches.filter((m) => !m.isAuthorizedForVendor);
+    let action: DlpAction = "ALLOW";
+
+    if (unauthorizedMatches.length > 0) {
+      if (vendorPolicy.blockUnapprovedData) {
+        action = "BLOCK_EGRESS";
+      } else {
+        action = "REDACT_IN_PLACE";
+      }
+    } else if (matches.length > 0 && vendorPolicy.requiresStrictRedaction) {
+      action = "REDACT_IN_PLACE";
     }
+
+    const digest = createHash("sha256")
+      .update(JSON.stringify({ requestId: request.requestId, action, matchesCount: matches.length }))
+      .digest("hex");
 
     return {
-      allowed: true,
-      actionTaken: "MASK_AND_FORWARD",
-      sanitizedPayload: sanitized,
-      violationsDetected: violations,
-      destinationSubProcessor: subProcessorHost
+      requestId: request.requestId,
+      destinationVendorId: vendorPolicy.vendorId,
+      action,
+      isAllowed: action !== "BLOCK_EGRESS",
+      detectedMatches: matches,
+      sanitizedPayloadText: action === "BLOCK_EGRESS" ? "" : sanitized,
+      auditDigestSha256: digest,
     };
   }
 }

@@ -1,43 +1,79 @@
 import { describe, it, expect } from "vitest";
-import { EgressDlpInterceptor } from "./egress-dlp-interceptor";
+import {
+  EgressDlpInterceptor,
+  SubProcessorVendorPolicy,
+  DlpInspectionRequest,
+} from "./egress-dlp-interceptor";
 
-describe("QA-142: EgressDlpInterceptor Regression Suite", () => {
-  it("allows clean egress payloads without modifications", () => {
-    const cleanPayload = JSON.stringify({
-      event: "checkout.completed",
-      customerId: "cus_991823",
-      amountCents: 4900
-    });
+describe("QA-142: Real-Time B2B Sub-Processor Egress Traffic DLP Interceptor", () => {
+  const stripePolicy: SubProcessorVendorPolicy = {
+    vendorId: "vendor-stripe",
+    vendorName: "Stripe Inc",
+    authorizedDataTypes: ["CREDIT_CARD_PAN"],
+    requiresStrictRedaction: false,
+    blockUnapprovedData: true,
+  };
 
-    const result = EgressDlpInterceptor.inspectAndSanitize(cleanPayload, "api.segment.io");
-    expect(result.allowed).toBe(true);
-    expect(result.actionTaken).toBe("ALLOW");
-    expect(result.violationsDetected.length).toBe(0);
-    expect(result.sanitizedPayload).toBe(cleanPayload);
+  const openAiPolicy: SubProcessorVendorPolicy = {
+    vendorId: "vendor-openai",
+    vendorName: "OpenAI LLC",
+    authorizedDataTypes: [], // Zero PII/Card allowed
+    requiresStrictRedaction: false,
+    blockUnapprovedData: true,
+  };
+
+  it("allows authorized card data to Stripe without blocking", () => {
+    // Valid sample Luhn test card (Visa test prefix)
+    const req: DlpInspectionRequest = {
+      requestId: "req-01",
+      destinationVendorId: "vendor-stripe",
+      destinationUrl: "https://api.stripe.com/v1/tokens",
+      payloadText: "Processing card: 4242-4242-4242-4242 for checkout session.",
+    };
+
+    const res = EgressDlpInterceptor.inspectPayload(req, stripePolicy);
+    expect(res.action).toBe("ALLOW");
+    expect(res.isAllowed).toBe(true);
+    expect(res.detectedMatches.length).toBe(1);
+    expect(res.detectedMatches[0].type).toBe("CREDIT_CARD_PAN");
+    expect(res.detectedMatches[0].isAuthorizedForVendor).toBe(true);
   });
 
-  it("redacts SSN and AWS keys when in REDACT mode", () => {
-    const payload = "Customer 123-45-6789 used credentials with key AKIAIOSFODNN7EXAMPLE to login.";
-    const result = EgressDlpInterceptor.inspectAndSanitize(payload, "api.mixpanel.com", "REDACT");
+  it("blocks unauthorized SSN egress to external AI model endpoints", () => {
+    const req: DlpInspectionRequest = {
+      requestId: "req-02",
+      destinationVendorId: "vendor-openai",
+      destinationUrl: "https://api.openai.com/v1/chat/completions",
+      payloadText: "Customer SSN is 012-34-5678. Summarize credit report.",
+    };
 
-    expect(result.allowed).toBe(true);
-    expect(result.actionTaken).toBe("MASK_AND_FORWARD");
-    expect(result.violationsDetected.length).toBe(2);
-    expect(result.sanitizedPayload).toContain("[REDACTED_SSN]");
-    expect(result.sanitizedPayload).toContain("AKIA[REDACTED_AWS_KEY]");
-    expect(result.sanitizedPayload).not.toContain("123-45-6789");
+    const res = EgressDlpInterceptor.inspectPayload(req, openAiPolicy);
+    expect(res.action).toBe("BLOCK_EGRESS");
+    expect(res.isAllowed).toBe(false);
+    expect(res.sanitizedPayloadText).toBe("");
+    expect(res.detectedMatches.some((m) => m.type === "SOCIAL_SECURITY_NUMBER")).toBe(true);
   });
 
-  it("immediately blocks egress when private key block is found", () => {
-    const payload = `
-      -----BEGIN RSA PRIVATE KEY-----
-      MIIEowIBAAKCAQEA0Y1+abcdef
-      -----END RSA PRIVATE KEY-----
-    `;
-    const result = EgressDlpInterceptor.inspectAndSanitize(payload, "api.openai.com");
+  it("redacts sensitive leaked API keys in transit", () => {
+    const policyWithRedaction: SubProcessorVendorPolicy = {
+      vendorId: "vendor-analytics",
+      vendorName: "DataDog",
+      authorizedDataTypes: [],
+      requiresStrictRedaction: true,
+      blockUnapprovedData: false, // Redact instead of hard block
+    };
 
-    expect(result.allowed).toBe(false);
-    expect(result.actionTaken).toBe("BLOCK_AND_ALERT");
-    expect(result.violationsDetected[0].type).toBe("PRIVATE_KEY_BLOCK");
+    const req: DlpInspectionRequest = {
+      requestId: "req-03",
+      destinationVendorId: "vendor-analytics",
+      destinationUrl: "https://http-intake.logs.datadoghq.com",
+      payloadText: "Encountered auth failure using key sk_mock_abcdef123456789012345678 in container.",
+    };
+
+    const res = EgressDlpInterceptor.inspectPayload(req, policyWithRedaction);
+    expect(res.action).toBe("REDACT_IN_PLACE");
+    expect(res.isAllowed).toBe(true);
+    expect(res.sanitizedPayloadText).toContain("[REDACTED_API_SECRET_KEY]");
+    expect(res.sanitizedPayloadText).not.toContain("sk_mock_abcdef123456789012345678");
   });
 });
