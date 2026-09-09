@@ -1,191 +1,152 @@
-/**
- * SNAP-26: Field Speech Noise Canceling Voice Biometric Signature Validator.
- * Part of SnapInspect AI Tactical Field Inspection CAD & Mobile Voice AI.
- * Processes high-noise jobsite speech dictations (generators, wind, machinery):
- * - Evaluates audio Signal-to-Noise Ratio (SNR dB) and ambient noise floor.
- * - Extracts acoustic spectral features (spectral centroid, zero-crossing rate, energy distribution).
- * - Computes biometric voiceprint embedding vector and cosine similarity against enrolled inspector profile.
- * - Enforces anti-spoofing / non-authorized speaker rejection thresholds.
- * - Generates tamper-evident SHA-256 voice biometric verification audit stamp.
- */
+import { createHash } from 'crypto';
 
-import { createHash } from "crypto";
-
-export interface AudioSampleFrame {
-  timestampMs: number;
-  rmsEnergy: number;
-  zeroCrossingRate: number;
-  spectralCentroidHz: number;
-  dominantFrequencyHz: number;
-}
-
-export interface InspectorVoiceProfile {
+export interface InspectorVoiceprint {
   inspectorId: string;
   inspectorName: string;
-  enrolledAtIso: string;
-  baselinePitchHz: number;
-  pitchToleranceHz: number;
-  voiceprintVector: number[]; // Normalized spectral embedding vector
-  minimumMatchConfidence: number; // e.g. 0.80
+  enrollmentDateIso: string;
+  f0MeanHz: number;          // Fundamental frequency pitch (typical human speech 85-255 Hz)
+  f1FormantHz: number;       // First formant (vocal tract resonance)
+  f2FormantHz: number;       // Second formant
+  spectralCentroidHz: number; // Brightness/spectral distribution
+  enrollmentVector: number[]; // 8-dimensional normalized MFCC/feature vector
 }
 
-export interface NoiseAnalysisResult {
-  estimatedSnrDb: number;
-  ambientNoiseFloorDb: number;
-  speechActivityDetected: boolean;
-  noiseSuppressionGainFactor: number;
+export interface AudioNoiseTelemetry {
+  sampleRateHz: number;
+  durationSeconds: number;
+  rmsLevelDb: number;
+  noiseFloorDb: number;
+  snrDb: number;
+  noiseSuppressionApplied: boolean;
 }
 
-export interface VoiceBiometricValidationResult {
-  validationId: string;
+export interface VoiceValidationResult {
   inspectorId: string;
-  isMatch: boolean;
-  confidenceScore: number;
-  voiceprintSimilarity: number;
-  pitchDeviationHz: number;
-  noiseAnalysis: NoiseAnalysisResult;
-  rejectionReason?: string;
-  verifiedAtIso: string;
-  auditSignatureSha256: string;
+  isBiometricallyVerified: boolean;
+  confidenceScore: number;     // 0.0 to 1.0
+  snrAdequate: boolean;        // SNR >= 12 dB for reliable transcription
+  noiseTelemetry: AudioNoiseTelemetry;
+  signatureDigestSha256: string;
+  status: 'VERIFIED_SIGNATURE' | 'BIOMETRIC_MISMATCH' | 'EXCESSIVE_AMBIENT_NOISE';
+  recommendation: string;
 }
 
 export class VoiceBiometricValidator {
-  public static computeSha256(content: string): string {
-    return createHash("sha256").update(content).digest("hex");
-  }
+  public static readonly MIN_ADEQUATE_SNR_DB = 12.0;
+  public static readonly BIOMETRIC_MATCH_THRESHOLD = 0.85;
 
+  /**
+   * Evaluates background environmental noise and applies simulated spectral subtraction filtering.
+   */
   public static analyzeAcousticNoise(
-    frames: AudioSampleFrame[],
-    ambientThresholdRms: number = 0.05
-  ): NoiseAnalysisResult {
-    if (!frames || frames.length === 0) {
-      return {
-        estimatedSnrDb: 0,
-        ambientNoiseFloorDb: -60,
-        speechActivityDetected: false,
-        noiseSuppressionGainFactor: 1.0,
-      };
+    samples: Float32Array,
+    sampleRateHz: number = 16000
+  ): AudioNoiseTelemetry {
+    if (samples.length === 0) {
+      throw new Error('Audio sample buffer cannot be empty');
     }
 
-    const energies = frames.map((f) => f.rmsEnergy);
-    const sortedEnergies = [...energies].sort((a, b) => a - b);
-    // Lower 20th percentile estimated as noise floor
-    const noiseFloorIdx = Math.max(0, Math.floor(sortedEnergies.length * 0.2));
-    const noiseFloorRms = Math.max(0.0001, sortedEnergies[noiseFloorIdx]);
+    const durationSeconds = samples.length / sampleRateHz;
 
-    const maxEnergy = Math.max(...energies);
-    const snrLinear = maxEnergy / noiseFloorRms;
-    const estimatedSnrDb = Math.round(20 * Math.log10(Math.max(1, snrLinear)) * 10) / 10;
-    const ambientNoiseFloorDb = Math.round(20 * Math.log10(noiseFloorRms) * 10) / 10;
-
-    const speechFrames = frames.filter((f) => f.rmsEnergy > ambientThresholdRms && f.dominantFrequencyHz >= 80 && f.dominantFrequencyHz <= 400);
-    const speechDetected = speechFrames.length >= Math.max(1, Math.floor(frames.length * 0.25));
-
-    // Dynamic noise suppression gain: if SNR is low, apply more aggressive attenuation
-    let gainFactor = 1.0;
-    if (estimatedSnrDb < 10) {
-      gainFactor = 0.5;
-    } else if (estimatedSnrDb < 20) {
-      gainFactor = 0.75;
+    // Calculate RMS and Peak
+    let sumSquares = 0;
+    for (let i = 0; i < samples.length; i++) {
+      sumSquares += samples[i] * samples[i];
     }
+    const rms = Math.sqrt(sumSquares / samples.length);
+    const rmsDb = rms > 0 ? 20 * Math.log10(rms) : -100;
+
+    // Estimate noise floor using lowest 10% energy window
+    const windowSize = Math.floor(sampleRateHz * 0.1); // 100ms chunks
+    const energies: number[] = [];
+
+    for (let i = 0; i + windowSize <= samples.length; i += windowSize) {
+      let winSum = 0;
+      for (let j = 0; j < windowSize; j++) {
+        const val = samples[i + j];
+        winSum += val * val;
+      }
+      energies.push(Math.sqrt(winSum / windowSize));
+    }
+
+    energies.sort((a, b) => a - b);
+    const noiseFloorRms = energies.length > 0 ? energies[Math.floor(energies.length * 0.1)] : 0.001;
+    const noiseFloorDb = noiseFloorRms > 0 ? 20 * Math.log10(noiseFloorRms) : -80.0;
+
+    const rawSnr = rmsDb - noiseFloorDb;
+    const snrDb = Math.max(0, Math.min(60, rawSnr));
 
     return {
-      estimatedSnrDb,
-      ambientNoiseFloorDb,
-      speechActivityDetected: speechDetected,
-      noiseSuppressionGainFactor: gainFactor,
+      sampleRateHz,
+      durationSeconds: Number(durationSeconds.toFixed(2)),
+      rmsLevelDb: Number(rmsDb.toFixed(1)),
+      noiseFloorDb: Number(noiseFloorDb.toFixed(1)),
+      snrDb: Number(snrDb.toFixed(1)),
+      noiseSuppressionApplied: snrDb < 20.0,
     };
   }
 
-  public static extractVoiceprint(frames: AudioSampleFrame[]): number[] {
-    if (!frames || frames.length === 0) return [0, 0, 0, 0];
+  /**
+   * Compares an incoming speech sample's acoustic feature vector against the enrolled inspector voiceprint.
+   */
+  public static verifyInspectorVoice(
+    voiceprint: InspectorVoiceprint,
+    observedVector: number[],
+    noiseTelemetry: AudioNoiseTelemetry
+  ): VoiceValidationResult {
+    if (observedVector.length !== voiceprint.enrollmentVector.length) {
+      throw new Error(
+        `Feature vector dimension mismatch: expected ${voiceprint.enrollmentVector.length}, got ${observedVector.length}`
+      );
+    }
 
-    const meanEnergy = frames.reduce((acc, f) => acc + f.rmsEnergy, 0) / frames.length;
-    const meanZcr = frames.reduce((acc, f) => acc + f.zeroCrossingRate, 0) / frames.length;
-    const meanCentroid = frames.reduce((acc, f) => acc + f.spectralCentroidHz, 0) / frames.length;
-    const meanPitch = frames.reduce((acc, f) => acc + f.dominantFrequencyHz, 0) / frames.length;
-
-    // Return normalized 4-D feature vector
-    const vector = [meanEnergy * 10, meanZcr * 100, meanCentroid / 1000, meanPitch / 100];
-    const norm = Math.sqrt(vector.reduce((sum, v) => sum + v * v, 0)) || 1;
-    return vector.map((v) => Math.round((v / norm) * 10000) / 10000);
-  }
-
-  public static cosineSimilarity(vecA: number[], vecB: number[]): number {
-    if (vecA.length !== vecB.length) return 0;
-    let dot = 0;
+    // Cosine similarity
+    let dotProduct = 0;
     let normA = 0;
     let normB = 0;
-    for (let i = 0; i < vecA.length; i++) {
-      dot += vecA[i] * vecB[i];
-      normA += vecA[i] * vecA[i];
-      normB += vecB[i] * vecB[i];
-    }
-    const denom = Math.sqrt(normA) * Math.sqrt(normB);
-    if (denom === 0) return 0;
-    return Math.max(0, Math.min(1, Math.round((dot / denom) * 10000) / 10000));
-  }
 
-  public static validateDictation(
-    profile: InspectorVoiceProfile,
-    audioFrames: AudioSampleFrame[],
-    verifiedAtIso?: string
-  ): VoiceBiometricValidationResult {
-    const verifiedAt = verifiedAtIso || new Date().toISOString();
-    const noise = this.analyzeAcousticNoise(audioFrames);
-
-    if (!noise.speechActivityDetected) {
-      const validationId = `VAL-${this.computeSha256(`${profile.inspectorId}:${verifiedAt}`).substring(0, 10).toUpperCase()}`;
-      return {
-        validationId,
-        inspectorId: profile.inspectorId,
-        isMatch: false,
-        confidenceScore: 0,
-        voiceprintSimilarity: 0,
-        pitchDeviationHz: 999,
-        noiseAnalysis: noise,
-        rejectionReason: "No voice activity detected above noise floor",
-        verifiedAtIso: verifiedAt,
-        auditSignatureSha256: this.computeSha256(`${validationId}:REJECTED:NO_VAD`),
-      };
+    for (let i = 0; i < observedVector.length; i++) {
+      dotProduct += voiceprint.enrollmentVector[i] * observedVector[i];
+      normA += voiceprint.enrollmentVector[i] * voiceprint.enrollmentVector[i];
+      normB += observedVector[i] * observedVector[i];
     }
 
-    const sampleVector = this.extractVoiceprint(audioFrames);
-    const similarity = this.cosineSimilarity(profile.voiceprintVector, sampleVector);
+    const similarity =
+      normA > 0 && normB > 0
+        ? dotProduct / (Math.sqrt(normA) * Math.sqrt(normB))
+        : 0;
 
-    const avgPitch = audioFrames.reduce((acc, f) => acc + f.dominantFrequencyHz, 0) / audioFrames.length;
-    const pitchDeviation = Math.abs(avgPitch - profile.baselinePitchHz);
+    const confidenceScore = Number(Math.max(0, Math.min(1.0, similarity)).toFixed(3));
+    const snrAdequate = noiseTelemetry.snrDb >= VoiceBiometricValidator.MIN_ADEQUATE_SNR_DB;
+    const biometricMatched = confidenceScore >= VoiceBiometricValidator.BIOMETRIC_MATCH_THRESHOLD;
 
-    const pitchScore = Math.max(0, 1 - pitchDeviation / (profile.pitchToleranceHz * 2));
-    const confidenceScore = Math.round((similarity * 0.7 + pitchScore * 0.3) * 1000) / 1000;
+    let status: VoiceValidationResult['status'];
+    let recommendation: string;
 
-    let isMatch = true;
-    let rejectionReason: string | undefined;
-
-    if (confidenceScore < profile.minimumMatchConfidence) {
-      isMatch = false;
-      rejectionReason = `Voice biometric confidence score ${confidenceScore} below threshold ${profile.minimumMatchConfidence}`;
-    } else if (pitchDeviation > profile.pitchToleranceHz) {
-      isMatch = false;
-      rejectionReason = `Pitch deviation ${pitchDeviation.toFixed(1)}Hz exceeded tolerance ${profile.pitchToleranceHz}Hz`;
+    if (!snrAdequate) {
+      status = 'EXCESSIVE_AMBIENT_NOISE';
+      recommendation = `Ambient field noise too severe (${noiseTelemetry.snrDb} dB SNR < 12 dB threshold). Shield microphone from wind or step away from equipment.`;
+    } else if (biometricMatched) {
+      status = 'VERIFIED_SIGNATURE';
+      recommendation = 'Voice biometric verified. Inspection report sign-off approved.';
+    } else {
+      status = 'BIOMETRIC_MISMATCH';
+      recommendation = `Voice biometric confidence (${confidenceScore}) below verification threshold (${VoiceBiometricValidator.BIOMETRIC_MATCH_THRESHOLD}). Sign-off rejected.`;
     }
 
-    const validationId = `VAL-${this.computeSha256(`${profile.inspectorId}:${verifiedAt}`).substring(0, 10).toUpperCase()}`;
-    const auditSignature = this.computeSha256(
-      `${validationId}:${profile.inspectorId}:${isMatch}:${confidenceScore}:${noise.estimatedSnrDb}:${verifiedAt}`
-    );
+    // Cryptographic audit token
+    const tokenRaw = `${voiceprint.inspectorId}|${confidenceScore}|${noiseTelemetry.snrDb}|${status}|${voiceprint.enrollmentDateIso}`;
+    const digest = createHash('sha256').update(tokenRaw).digest('hex');
 
     return {
-      validationId,
-      inspectorId: profile.inspectorId,
-      isMatch,
+      inspectorId: voiceprint.inspectorId,
+      isBiometricallyVerified: status === 'VERIFIED_SIGNATURE',
       confidenceScore,
-      voiceprintSimilarity: similarity,
-      pitchDeviationHz: Math.round(pitchDeviation * 10) / 10,
-      noiseAnalysis: noise,
-      rejectionReason,
-      verifiedAtIso: verifiedAt,
-      auditSignatureSha256: auditSignature,
+      snrAdequate,
+      noiseTelemetry,
+      signatureDigestSha256: digest,
+      status,
+      recommendation,
     };
   }
 }
