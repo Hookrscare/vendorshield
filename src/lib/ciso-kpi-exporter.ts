@@ -1,230 +1,146 @@
 /**
  * QA-130: Automated CISO Executive Security Posture KPI Dashboard Exporter.
  * Part of VendorShield B2B SOC 2 & GDPR Sub-Processor Trust Hub.
- * Aggregates vendor compliance posture, sub-processor data residency risks,
- * SLA adherence, and breach exposure into executive CISO-ready metrics,
- * computing an overall Security Posture Index (0-100) with tamper-evident cryptographic digests.
+ * Computes enterprise TPRM metrics, vendor compliance rates, critical coverage,
+ * posture grade, and generates board-ready executive summaries with SHA-256 seals.
  */
 
 import { createHash } from "crypto";
 
-export type RiskLevel = "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
-
-export interface VendorSecuritySnapshot {
+export interface VendorPostureRecord {
   vendorId: string;
   vendorName: string;
-  tier: 1 | 2 | 3;
-  riskScore: number; // 0 (safest) - 100 (highest risk)
-  hasSoc2Type2: boolean;
-  hasIso27001: boolean;
-  hasGdprDpaSigned: boolean;
-  isDataResidencyCompliant: boolean;
-  activeVulnerabilitiesCount: number;
-  slaUptimePercentage: number;
+  criticalityTier: "TIER_1_CRITICAL" | "TIER_2_SIGNIFICANT" | "TIER_3_LOW";
+  hasValidDpa: boolean;
+  hasSoc2Type2OrIso: boolean;
+  unresolvedCriticalCves: number;
+  openSlaBreach: boolean;
 }
 
 export interface CisoKpiSummary {
-  evaluatedAtIso: string;
-  tenantId: string;
+  calculatedAtIso: string;
   totalVendors: number;
-  tier1VendorsCount: number;
-  overallSecurityPostureScore: number; // 0 - 100 (higher is better)
-  postureGrade: "A+" | "A" | "B" | "C" | "D" | "F";
-  complianceRates: {
-    soc2CoveragePct: number;
-    iso27001CoveragePct: number;
-    gdprDpaCoveragePct: number;
-    dataResidencyCompliancePct: number;
-  };
-  riskDistribution: {
-    lowRiskCount: number;
-    mediumRiskCount: number;
-    highRiskCount: number;
-    criticalRiskCount: number;
-  };
-  averageVendorRiskScore: number;
-  averageUptimePct: number;
-  criticalActionItems: string[];
-  reportDigestSha256: string;
+  tier1VendorCount: number;
+  dpaComplianceRatePct: number;
+  criticalCoveragePct: number;
+  totalCriticalCves: number;
+  slaBreachCount: number;
+  overallRiskScore: number; // 0 to 100 (higher = safer posture)
+  postureGrade: "EXCELLENT" | "ADEQUATE" | "AT_RISK" | "CRITICAL_ACTION_REQUIRED";
+  keyRecommendations: string[];
+  auditDigestSha256: string;
 }
 
 export class CisoKpiExporter {
-  public static calculateGrade(score: number): "A+" | "A" | "B" | "C" | "D" | "F" {
-    if (score >= 95) return "A+";
-    if (score >= 85) return "A";
-    if (score >= 75) return "B";
-    if (score >= 65) return "C";
-    if (score >= 50) return "D";
-    return "F";
-  }
-
-  public static categorizeRisk(riskScore: number): RiskLevel {
-    if (riskScore >= 75) return "CRITICAL";
-    if (riskScore >= 50) return "HIGH";
-    if (riskScore >= 25) return "MEDIUM";
-    return "LOW";
-  }
-
-  public static exportDashboardKpis(
-    tenantId: string,
-    vendors: VendorSecuritySnapshot[]
-  ): CisoKpiSummary {
-    const timestamp = new Date().toISOString();
-
-    if (!vendors || vendors.length === 0) {
-      const emptyDigest = createHash("sha256")
-        .update(`EMPTY:${tenantId}:${timestamp}`)
-        .digest("hex");
-
+  public static calculateKpis(vendors: VendorPostureRecord[], timestampIso: string = new Date().toISOString()): CisoKpiSummary {
+    if (vendors.length === 0) {
       return {
-        evaluatedAtIso: timestamp,
-        tenantId,
+        calculatedAtIso: timestampIso,
         totalVendors: 0,
-        tier1VendorsCount: 0,
-        overallSecurityPostureScore: 100,
-        postureGrade: "A+",
-        complianceRates: {
-          soc2CoveragePct: 100,
-          iso27001CoveragePct: 100,
-          gdprDpaCoveragePct: 100,
-          dataResidencyCompliancePct: 100,
-        },
-        riskDistribution: {
-          lowRiskCount: 0,
-          mediumRiskCount: 0,
-          highRiskCount: 0,
-          criticalRiskCount: 0,
-        },
-        averageVendorRiskScore: 0,
-        averageUptimePct: 100,
-        criticalActionItems: [],
-        reportDigestSha256: emptyDigest,
+        tier1VendorCount: 0,
+        dpaComplianceRatePct: 100,
+        criticalCoveragePct: 100,
+        totalCriticalCves: 0,
+        slaBreachCount: 0,
+        overallRiskScore: 100,
+        postureGrade: "EXCELLENT",
+        keyRecommendations: ["No third-party vendors on record."],
+        auditDigestSha256: createHash("sha256").update("EMPTY_ROSTER").digest("hex")
       };
     }
 
-    const total = vendors.length;
-    let tier1Count = 0;
-    let totalRisk = 0;
-    let totalUptime = 0;
-    let soc2Count = 0;
-    let isoCount = 0;
-    let dpaCount = 0;
-    let dataResidencyCompliantCount = 0;
+    const totalVendors = vendors.length;
+    const tier1Vendors = vendors.filter(v => v.criticalityTier === "TIER_1_CRITICAL");
+    const dpaValidCount = vendors.filter(v => v.hasValidDpa).length;
+    const criticalWithCerts = tier1Vendors.filter(v => v.hasSoc2Type2OrIso).length;
+    const totalCriticalCves = vendors.reduce((acc, v) => acc + v.unresolvedCriticalCves, 0);
+    const slaBreachCount = vendors.filter(v => v.openSlaBreach).length;
 
-    let lowRisk = 0;
-    let medRisk = 0;
-    let highRisk = 0;
-    let critRisk = 0;
+    const dpaComplianceRatePct = Math.round((dpaValidCount / totalVendors) * 1000) / 10;
+    const criticalCoveragePct = tier1Vendors.length > 0
+      ? Math.round((criticalWithCerts / tier1Vendors.length) * 1000) / 10
+      : 100;
 
-    const actionItems: string[] = [];
+    // Score calculation:
+    // Base 100 points
+    // - DPA penalty: up to -30 based on missing %
+    // - Critical coverage penalty: up to -35 based on missing %
+    // - CVE penalty: -5 per critical CVE up to -25
+    // - SLA breach penalty: -10 per breach up to -20
+    const dpaPenalty = (100 - dpaComplianceRatePct) * 0.3;
+    const certPenalty = (100 - criticalCoveragePct) * 0.35;
+    const cvePenalty = Math.min(25, totalCriticalCves * 5);
+    const slaPenalty = Math.min(20, slaBreachCount * 10);
 
-    for (const v of vendors) {
-      if (v.tier === 1) tier1Count++;
-      totalRisk += v.riskScore;
-      totalUptime += v.slaUptimePercentage;
+    const calculatedScore = Math.max(0, Math.min(100, Math.round(100 - dpaPenalty - certPenalty - cvePenalty - slaPenalty)));
 
-      if (v.hasSoc2Type2) soc2Count++;
-      if (v.hasIso27001) isoCount++;
-      if (v.hasGdprDpaSigned) dpaCount++;
-      if (v.isDataResidencyCompliant) dataResidencyCompliantCount++;
-
-      const riskCat = this.categorizeRisk(v.riskScore);
-      if (riskCat === "CRITICAL") critRisk++;
-      else if (riskCat === "HIGH") highRisk++;
-      else if (riskCat === "MEDIUM") medRisk++;
-      else lowRisk++;
-
-      if (v.tier === 1 && !v.hasSoc2Type2) {
-        actionItems.push(`Tier 1 vendor '${v.vendorName}' is missing active SOC 2 Type II certification.`);
-      }
-      if (v.tier === 1 && !v.hasGdprDpaSigned) {
-        actionItems.push(`Tier 1 vendor '${v.vendorName}' lacks an executed GDPR Data Processing Agreement.`);
-      }
-      if (!v.isDataResidencyCompliant) {
-        actionItems.push(`Vendor '${v.vendorName}' violates regional data residency guardrails.`);
-      }
-      if (v.activeVulnerabilitiesCount > 5) {
-        actionItems.push(`Vendor '${v.vendorName}' has ${v.activeVulnerabilitiesCount} outstanding critical CVE vulnerabilities.`);
-      }
+    let postureGrade: CisoKpiSummary["postureGrade"] = "EXCELLENT";
+    if (calculatedScore < 60) {
+      postureGrade = "CRITICAL_ACTION_REQUIRED";
+    } else if (calculatedScore < 75) {
+      postureGrade = "AT_RISK";
+    } else if (calculatedScore < 90) {
+      postureGrade = "ADEQUATE";
     }
 
-    const avgRisk = totalRisk / total;
-    const avgUptime = totalUptime / total;
+    const recommendations: string[] = [];
+    if (dpaComplianceRatePct < 100) {
+      recommendations.push(`Execute outstanding DPAs for ${totalVendors - dpaValidCount} non-compliant vendor(s).`);
+    }
+    if (criticalCoveragePct < 100) {
+      recommendations.push(`Obtain SOC 2 Type II or ISO 27001 certs for ${tier1Vendors.length - criticalWithCerts} Tier-1 critical vendor(s).`);
+    }
+    if (totalCriticalCves > 0) {
+      recommendations.push(`Remediate ${totalCriticalCves} active critical CVE vulnerability exposure(s).`);
+    }
+    if (slaBreachCount > 0) {
+      recommendations.push(`Resolve ${slaBreachCount} open vendor compliance SLA breach(es).`);
+    }
+    if (recommendations.length === 0) {
+      recommendations.push("Third-party security posture is optimal; maintain ongoing continuous monitoring.");
+    }
 
-    const soc2Pct = (soc2Count / total) * 100;
-    const isoPct = (isoCount / total) * 100;
-    const dpaPct = (dpaCount / total) * 100;
-    const residencyPct = (dataResidencyCompliantCount / total) * 100;
-
-    // Weighted composite score (0 - 100)
-    // 30% from low average risk, 25% from SOC 2, 20% from DPA, 15% from Residency, 10% from Uptime
-    const riskFactor = Math.max(0, 100 - avgRisk);
-    const uptimeFactor = Math.min(100, Math.max(0, (avgUptime - 95) * 20)); // scaled 95%-100% -> 0-100
-    const compositeScore = Math.round(
-      riskFactor * 0.3 +
-      soc2Pct * 0.25 +
-      dpaPct * 0.2 +
-      residencyPct * 0.15 +
-      uptimeFactor * 0.1
-    );
-
-    const clampedScore = Math.min(100, Math.max(0, compositeScore));
-    const grade = this.calculateGrade(clampedScore);
-
-    const payloadToSign = `${tenantId}:${timestamp}:${clampedScore}:${total}:${critRisk}`;
-    const digest = createHash("sha256").update(payloadToSign).digest("hex");
+    const rawPayload = JSON.stringify({
+      timestampIso,
+      totalVendors,
+      dpaComplianceRatePct,
+      criticalCoveragePct,
+      totalCriticalCves,
+      calculatedScore,
+      postureGrade
+    });
+    const auditDigestSha256 = createHash("sha256").update(rawPayload).digest("hex");
 
     return {
-      evaluatedAtIso: timestamp,
-      tenantId,
-      totalVendors: total,
-      tier1VendorsCount: tier1Count,
-      overallSecurityPostureScore: clampedScore,
-      postureGrade: grade,
-      complianceRates: {
-        soc2CoveragePct: Number(soc2Pct.toFixed(1)),
-        iso27001CoveragePct: Number(isoPct.toFixed(1)),
-        gdprDpaCoveragePct: Number(dpaPct.toFixed(1)),
-        dataResidencyCompliancePct: Number(residencyPct.toFixed(1)),
-      },
-      riskDistribution: {
-        lowRiskCount: lowRisk,
-        mediumRiskCount: medRisk,
-        highRiskCount: highRisk,
-        criticalRiskCount: critRisk,
-      },
-      averageVendorRiskScore: Number(avgRisk.toFixed(1)),
-      averageUptimePct: Number(avgUptime.toFixed(2)),
-      criticalActionItems: actionItems,
-      reportDigestSha256: digest,
+      calculatedAtIso: timestampIso,
+      totalVendors,
+      tier1VendorCount: tier1Vendors.length,
+      dpaComplianceRatePct,
+      criticalCoveragePct,
+      totalCriticalCves,
+      slaBreachCount,
+      overallRiskScore: calculatedScore,
+      postureGrade,
+      keyRecommendations: recommendations,
+      auditDigestSha256
     };
   }
 
-  public static formatMarkdownReport(summary: CisoKpiSummary): string {
+  public static generateExecutiveMarkdown(kpi: CisoKpiSummary): string {
     return [
-      `# 🛡️ CISO Executive Security Posture KPI Report`,
+      `# 🛡️ Executive Security Posture KPI Dashboard`,
+      `**Generated At:** \`${kpi.calculatedAtIso}\` | **Audit Seal:** \`${kpi.auditDigestSha256.slice(0, 16)}...\``,
       ``,
-      `- **Tenant ID:** \`${summary.tenantId}\``,
-      `- **Generated:** \`${summary.evaluatedAtIso}\``,
-      `- **Overall Security Posture:** **${summary.overallSecurityPostureScore}/100 (Grade: ${summary.postureGrade})**`,
-      `- **Report Digest:** \`${summary.reportDigestSha256}\``,
+      `### Executive Health Overview`,
+      `- **Overall Security Posture Grade:** **${kpi.postureGrade}** (${kpi.overallRiskScore} / 100)`,
+      `- **Total Monitored Sub-Processors:** ${kpi.totalVendors} (${kpi.tier1VendorCount} Tier-1 Critical)`,
+      `- **DPA Compliance Rate:** ${kpi.dpaComplianceRatePct}%`,
+      `- **Tier-1 SOC 2 / ISO Coverage:** ${kpi.criticalCoveragePct}%`,
+      `- **Active Critical CVE Exposures:** ${kpi.totalCriticalCves}`,
+      `- **SLA Governance Breaches:** ${kpi.slaBreachCount}`,
       ``,
-      `### 📊 Key Compliance Metrics`,
-      `- **SOC 2 Type II Coverage:** ${summary.complianceRates.soc2CoveragePct}%`,
-      `- **ISO 27001 Coverage:** ${summary.complianceRates.iso27001CoveragePct}%`,
-      `- **GDPR DPA Sign-off:** ${summary.complianceRates.gdprDpaCoveragePct}%`,
-      `- **Data Residency Compliance:** ${summary.complianceRates.dataResidencyCompliancePct}%`,
-      ``,
-      `### ⚠️ Risk Distribution`,
-      `- **Low Risk Vendors:** ${summary.riskDistribution.lowRiskCount}`,
-      `- **Medium Risk Vendors:** ${summary.riskDistribution.mediumRiskCount}`,
-      `- **High Risk Vendors:** ${summary.riskDistribution.highRiskCount}`,
-      `- **Critical Risk Vendors:** ${summary.riskDistribution.criticalRiskCount}`,
-      ``,
-      `### 🎯 Priority Action Items (${summary.criticalActionItems.length})`,
-      summary.criticalActionItems.length > 0
-        ? summary.criticalActionItems.map((item) => `- ❌ ${item}`).join("\n")
-        : `- ✅ No critical compliance or security blockers identified.`
+      `### Priority Action Items`,
+      ...kpi.keyRecommendations.map(r => `- ⚠️ ${r}`)
     ].join("\n");
   }
 }

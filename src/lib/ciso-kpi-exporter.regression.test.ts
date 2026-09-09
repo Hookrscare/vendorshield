@@ -1,89 +1,79 @@
+/**
+ * QA-130 Regression Test Suite: CISO Executive Security Posture KPI Dashboard Exporter.
+ */
+
 import { describe, it, expect } from "vitest";
-import {
-  CisoKpiExporter,
-  VendorSecuritySnapshot
-} from "./ciso-kpi-exporter";
+import { CisoKpiExporter, VendorPostureRecord } from "./ciso-kpi-exporter";
 
-describe("QA-130: CisoKpiExporter Regression Suite", () => {
-  it("computes Grade A+ and 100 score for empty vendor roster", () => {
-    const summary = CisoKpiExporter.exportDashboardKpis("tenant_empty", []);
-    expect(summary.totalVendors).toBe(0);
-    expect(summary.overallSecurityPostureScore).toBe(100);
-    expect(summary.postureGrade).toBe("A+");
-    expect(summary.criticalActionItems.length).toBe(0);
-    expect(summary.reportDigestSha256).toMatch(/^[a-f0-9]{64}$/);
-  });
-
-  it("calculates high score for certified low-risk vendor fleet", () => {
-    const vendors: VendorSecuritySnapshot[] = [
+describe("QA-130: CISO Executive Security Posture KPI Exporter", () => {
+  it("computes 100/100 EXCELLENT grade for fully compliant vendor fleet", () => {
+    const vendors: VendorPostureRecord[] = [
       {
-        vendorId: "v1",
-        vendorName: "AWS Cloud Services",
-        tier: 1,
-        riskScore: 10,
-        hasSoc2Type2: true,
-        hasIso27001: true,
-        hasGdprDpaSigned: true,
-        isDataResidencyCompliant: true,
-        activeVulnerabilitiesCount: 0,
-        slaUptimePercentage: 99.99
+        vendorId: "v-aws",
+        vendorName: "Amazon Web Services",
+        criticalityTier: "TIER_1_CRITICAL",
+        hasValidDpa: true,
+        hasSoc2Type2OrIso: true,
+        unresolvedCriticalCves: 0,
+        openSlaBreach: false
       },
       {
-        vendorId: "v2",
-        vendorName: "Datadog Observability",
-        tier: 2,
-        riskScore: 15,
-        hasSoc2Type2: true,
-        hasIso27001: true,
-        hasGdprDpaSigned: true,
-        isDataResidencyCompliant: true,
-        activeVulnerabilitiesCount: 1,
-        slaUptimePercentage: 99.95
+        vendorId: "v-stripe",
+        vendorName: "Stripe Payments",
+        criticalityTier: "TIER_1_CRITICAL",
+        hasValidDpa: true,
+        hasSoc2Type2OrIso: true,
+        unresolvedCriticalCves: 0,
+        openSlaBreach: false
       }
     ];
 
-    const summary = CisoKpiExporter.exportDashboardKpis("tenant_secure", vendors);
-    expect(summary.totalVendors).toBe(2);
-    expect(summary.tier1VendorsCount).toBe(1);
-    expect(summary.overallSecurityPostureScore).toBeGreaterThanOrEqual(90);
-    expect(["A+", "A"]).toContain(summary.postureGrade);
-    expect(summary.complianceRates.soc2CoveragePct).toBe(100);
-    expect(summary.complianceRates.gdprDpaCoveragePct).toBe(100);
-    expect(summary.criticalActionItems.length).toBe(0);
+    const kpi = CisoKpiExporter.calculateKpis(vendors, "2026-09-09T00:00:00Z");
+    expect(kpi.overallRiskScore).toBe(100);
+    expect(kpi.postureGrade).toBe("EXCELLENT");
+    expect(kpi.dpaComplianceRatePct).toBe(100);
+    expect(kpi.criticalCoveragePct).toBe(100);
+    expect(kpi.totalCriticalCves).toBe(0);
+
+    const md = CisoKpiExporter.generateExecutiveMarkdown(kpi);
+    expect(md).toContain("- **Overall Security Posture Grade:** **EXCELLENT** (100 / 100)");
   });
 
-  it("flags action items and degrades score when Tier 1 vendor lacks SOC 2 or violates residency", () => {
-    const atRiskVendors: VendorSecuritySnapshot[] = [
+  it("penalizes missing DPAs, missing SOC 2 certs, and active CVE exposures", () => {
+    const vendors: VendorPostureRecord[] = [
       {
-        vendorId: "v_risky",
-        vendorName: "Legacy Analytics Sub-Processor",
-        tier: 1,
-        riskScore: 85,
-        hasSoc2Type2: false,
-        hasIso27001: false,
-        hasGdprDpaSigned: false,
-        isDataResidencyCompliant: false,
-        activeVulnerabilitiesCount: 8,
-        slaUptimePercentage: 92.5
+        vendorId: "v-risky-db",
+        vendorName: "Legacy DB Hosting",
+        criticalityTier: "TIER_1_CRITICAL",
+        hasValidDpa: false,
+        hasSoc2Type2OrIso: false,
+        unresolvedCriticalCves: 3,
+        openSlaBreach: true
+      },
+      {
+        vendorId: "v-marketing",
+        vendorName: "Ad Pixel Service",
+        criticalityTier: "TIER_2_SIGNIFICANT",
+        hasValidDpa: false,
+        hasSoc2Type2OrIso: false,
+        unresolvedCriticalCves: 1,
+        openSlaBreach: false
       }
     ];
 
-    const summary = CisoKpiExporter.exportDashboardKpis("tenant_at_risk", atRiskVendors);
-    expect(summary.postureGrade).toBe("F");
-    expect(summary.riskDistribution.criticalRiskCount).toBe(1);
-    expect(summary.criticalActionItems.length).toBeGreaterThanOrEqual(3);
-    expect(summary.criticalActionItems.some(item => item.includes("missing active SOC 2"))).toBe(true);
-    expect(summary.criticalActionItems.some(item => item.includes("violates regional data residency"))).toBe(true);
-
-    const md = CisoKpiExporter.formatMarkdownReport(summary);
-    expect(md).toContain("CISO Executive Security Posture KPI Report");
-    expect(md).toContain("Grade: F");
+    const kpi = CisoKpiExporter.calculateKpis(vendors, "2026-09-09T00:00:00Z");
+    expect(kpi.postureGrade).toBe("CRITICAL_ACTION_REQUIRED");
+    expect(kpi.overallRiskScore).toBeLessThan(60);
+    expect(kpi.dpaComplianceRatePct).toBe(0);
+    expect(kpi.criticalCoveragePct).toBe(0);
+    expect(kpi.totalCriticalCves).toBe(4);
+    expect(kpi.keyRecommendations.length).toBeGreaterThanOrEqual(3);
   });
 
-  it("accurately categorizes risk bands", () => {
-    expect(CisoKpiExporter.categorizeRisk(10)).toBe("LOW");
-    expect(CisoKpiExporter.categorizeRisk(30)).toBe("MEDIUM");
-    expect(CisoKpiExporter.categorizeRisk(60)).toBe("HIGH");
-    expect(CisoKpiExporter.categorizeRisk(80)).toBe("CRITICAL");
+  it("handles empty vendor roster gracefully", () => {
+    const kpi = CisoKpiExporter.calculateKpis([]);
+    expect(kpi.totalVendors).toBe(0);
+    expect(kpi.overallRiskScore).toBe(100);
+    expect(kpi.auditDigestSha256).toBeDefined();
   });
 });
