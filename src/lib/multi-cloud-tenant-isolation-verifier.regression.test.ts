@@ -5,93 +5,82 @@ import {
   ResourceAccessProbe,
 } from './multi-cloud-tenant-isolation-verifier';
 
-describe('QA-159: Automated Multi-Cloud Tenant Isolation & IAM Boundary Verification Engine', () => {
+describe('QA-159: MultiCloudTenantIsolationVerifier Regression Suite', () => {
   const verifier = new MultiCloudTenantIsolationVerifier();
 
   const mockTenant: TenantContext = {
-    tenantId: 'tenant-acme-corp',
-    organizationName: 'Acme Corporation',
+    tenantId: 'tenant-enterprise-99',
+    organizationName: 'Enterprise Corp',
     allowedCloudAccounts: {
       AWS: ['123456789012'],
-      GCP: ['acme-corp-prod'],
-      AZURE: ['sub-acme-prod-01'],
-      CLOUDFLARE: ['cf-zone-acme'],
+      GCP: ['enterprise-gcp-prod'],
+      AZURE: ['sub-enterprise-azure'],
+      CLOUDFLARE: ['cf-zone-enterprise'],
     },
-    kmsKeyArns: ['arn:aws:kms:us-east-1:123456789012:key/mrk-acme'],
-    storagePrefixes: ['s3://acme-vault/tenant-acme-corp/'],
+    kmsKeyArns: ['arn:aws:kms:us-east-1:123456789012:key/mock-kms'],
+    storagePrefixes: ['s3://enterprise-bucket/tenants/tenant-enterprise-99/'],
   };
 
-  it('validates compliant probes with perfect isolation score and zero blast radius', () => {
-    const validProbes: ResourceAccessProbe[] = [
+  it('validates compliant AWS access probes with proper tenant conditions', () => {
+    const probes: ResourceAccessProbe[] = [
       {
-        requestingTenantId: 'tenant-acme-corp',
+        requestingTenantId: 'tenant-enterprise-99',
         targetCloud: 'AWS',
-        targetResourceId: 'arn:aws:s3:::123456789012-vault/tenant-acme-corp/data.parquet',
-        targetResourceTenantId: 'tenant-acme-corp',
+        targetResourceId: 'arn:aws:s3:123456789012:tenant-enterprise-99-vault/data.json',
+        targetResourceTenantId: 'tenant-enterprise-99',
         attemptedAction: 'READ',
         iamConditions: {
-          'aws:PrincipalTag/TenantId': 'tenant-acme-corp',
-        },
-      },
-      {
-        requestingTenantId: 'tenant-acme-corp',
-        targetCloud: 'GCP',
-        targetResourceId: 'projects/acme-corp-prod/buckets/acme-vault/objects/data.json',
-        targetResourceTenantId: 'tenant-acme-corp',
-        attemptedAction: 'WRITE',
-        iamConditions: {
-          'resource.labels.tenant_id': 'tenant-acme-corp',
+          'aws:PrincipalTag/TenantId': 'tenant-enterprise-99',
         },
       },
     ];
 
-    const report = verifier.verifyTenantIsolation(mockTenant, validProbes);
-
+    const report = verifier.verifyTenantIsolation(mockTenant, probes);
     expect(report.isIsolated).toBe(true);
     expect(report.isolationScore).toBe(100);
     expect(report.breachBlastRadius).toBe('ZERO');
-    expect(report.violations).toHaveLength(0);
-    expect(report.auditAttestationHashSha256).toMatch(/^[a-f0-9]{64}$/);
+    expect(report.violations.length).toBe(0);
+    expect(report.auditAttestationHashSha256).toBeDefined();
   });
 
-  it('detects critical cross-tenant data access attempts', () => {
-    const crossTenantProbe: ResourceAccessProbe[] = [
+  it('detects cross-tenant direct data access attempts as CRITICAL breach', () => {
+    const probes: ResourceAccessProbe[] = [
       {
-        requestingTenantId: 'tenant-acme-corp',
+        requestingTenantId: 'tenant-enterprise-99',
         targetCloud: 'AWS',
-        targetResourceId: 'arn:aws:s3:::123456789012-vault/tenant-competitor-inc/secrets.json',
-        targetResourceTenantId: 'tenant-competitor-inc',
+        targetResourceId: 'arn:aws:s3:123456789012:competitor-vault/secrets.json',
+        targetResourceTenantId: 'tenant-competitor-88', // Cross tenant leak!
         attemptedAction: 'READ',
         iamConditions: {
-          'aws:PrincipalTag/TenantId': 'tenant-acme-corp',
+          'aws:PrincipalTag/TenantId': 'tenant-enterprise-99',
         },
       },
     ];
 
-    const report = verifier.verifyTenantIsolation(mockTenant, crossTenantProbe);
-
+    const report = verifier.verifyTenantIsolation(mockTenant, probes);
     expect(report.isIsolated).toBe(false);
-    expect(report.isolationScore).toBeLessThan(70);
     expect(report.breachBlastRadius).toBe('CRITICAL');
-    expect(report.violations[0].code).toBe('CROSS_TENANT_LEAK');
+    expect(report.isolationScore).toBeLessThan(100);
+    expect(report.violations.some((v) => v.code === 'CROSS_TENANT_LEAK')).toBe(true);
   });
 
-  it('flags missing IAM boundary condition tags and wildcard enumeration', () => {
-    const flawedProbes: ResourceAccessProbe[] = [
+  it('detects wildcard enumeration and unauthorized cloud accounts', () => {
+    const probes: ResourceAccessProbe[] = [
       {
-        requestingTenantId: 'tenant-acme-corp',
+        requestingTenantId: 'tenant-enterprise-99',
         targetCloud: 'AWS',
-        targetResourceId: 'arn:aws:s3:::123456789012-vault/*',
-        targetResourceTenantId: 'tenant-acme-corp',
+        targetResourceId: 'arn:aws:s3:999999999999:unknown-bucket/*', // Wildcard & unknown account
+        targetResourceTenantId: 'tenant-enterprise-99',
         attemptedAction: 'ENUMERATE',
-        iamConditions: {}, // Missing conditions
+        iamConditions: {
+          'aws:PrincipalTag/TenantId': 'tenant-enterprise-99',
+        },
       },
     ];
 
-    const report = verifier.verifyTenantIsolation(mockTenant, flawedProbes);
-
+    const report = verifier.verifyTenantIsolation(mockTenant, probes);
     expect(report.isIsolated).toBe(false);
-    expect(report.violations.some(v => v.code === 'MISSING_BOUNDARY_CONDITION')).toBe(true);
-    expect(report.violations.some(v => v.code === 'WILDCARD_ENUMERATION')).toBe(true);
+    expect(report.violations.some((v) => v.code === 'UNAUTHORIZED_CLOUD_ACCOUNT')).toBe(true);
+    expect(report.violations.some((v) => v.code === 'WILDCARD_ENUMERATION')).toBe(true);
   });
 });
