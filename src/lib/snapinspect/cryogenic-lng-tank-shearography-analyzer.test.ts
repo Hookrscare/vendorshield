@@ -1,65 +1,60 @@
 import { describe, it, expect } from 'vitest';
 import {
   CryogenicLngTankShearographyAnalyzer,
-  type ShearographyPoint
+  LngTankMembraneSpec,
+  ShearographyPhaseMap,
 } from './cryogenic-lng-tank-shearography-analyzer';
 
-describe('CryogenicLngTankShearographyAnalyzer (SNAP-68)', () => {
+describe('SNAP-68: CryogenicLngTankShearographyAnalyzer Tests', () => {
   const analyzer = new CryogenicLngTankShearographyAnalyzer();
 
-  it('evaluates optimal homogeneous Invar membrane under cryogenic conditions', () => {
-    const points: ShearographyPoint[] = [];
-    for (let x = 0; x <= 100; x += 10) {
-      for (let y = 0; y <= 100; y += 10) {
-        points.push({
-          xMm: x,
-          yMm: y,
-          phaseGradientRadMm: (Math.random() - 0.5) * 0.01, // Low ambient thermal gradient
-          modulationContrast: 0.85,
-          surfaceTempK: 111.0,
-        });
-      }
-    }
+  const mockSpec: LngTankMembraneSpec = {
+    tankId: 'LNG-SPHERE-04',
+    membraneAlloy: 'INVAR_36',
+    membraneThicknessMm: 0.7,
+    operatingTemperatureKelvin: 111.0,
+    maxAllowableVoidDiameterMm: 18.0,
+  };
 
-    const report = analyzer.analyzeShearogram('TANK-MOSS-01', 'INVAR_36', 111.0, points);
+  it('certifies pristine membrane with zero fringe anomalies', () => {
+    // Uniform baseline phase noise < 0.2 rad
+    const grid: number[][] = Array(10)
+      .fill(0)
+      .map(() => Array(10).fill(0.05));
 
-    expect(report.tankSegmentId).toBe('TANK-MOSS-01');
-    expect(report.membraneIntegrityIndex).toBe(100);
-    expect(report.safetyStatus).toBe('OPTIMAL_FULL_CRYOGENIC_CERTIFIED');
-    expect(report.boilOffGasRiskLevel).toBe('NOMINAL');
-    expect(report.defectsDetected).toHaveLength(0);
-    expect(report.inspectionTokenSha256).toHaveLength(64);
+    const phaseMap: ShearographyPhaseMap = {
+      laserWavelengthNm: 532.0,
+      shearDistanceMm: 8.0,
+      measuredPhaseDifferenceRad: grid,
+      thermalExcitationDeltaKelvin: 3.0,
+    };
+
+    const res = analyzer.analyzePhaseMap(mockSpec, phaseMap);
+    expect(res.totalDefectsFound).toBe(0);
+    expect(res.isMembraneIntegrityCertified).toBe(true);
+    expect(res.recommendations[0]).toContain('NOMINAL');
   });
 
-  it('identifies critical sub-surface delamination butterfly fringe cluster', () => {
-    const points: ShearographyPoint[] = [];
-    for (let x = 0; x <= 100; x += 10) {
-      for (let y = 0; y <= 100; y += 10) {
-        const dist = Math.hypot(x - 50, y - 50);
-        const isDefect = dist <= 25.0;
-        points.push({
-          xMm: x,
-          yMm: y,
-          // Butterfly fringe: sharp steep displacement derivative across defect boundary
-          phaseGradientRadMm: isDefect ? 0.15 : 0.005,
-          modulationContrast: 0.90,
-          surfaceTempK: 111.0,
-        });
-      }
-    }
+  it('detects critical subsurface insulation delamination exceeding tolerance', () => {
+    const grid: number[][] = Array(8)
+      .fill(0)
+      .map(() => Array(8).fill(0.1));
 
-    const report = analyzer.analyzeShearogram('TANK-MARK3-02', 'INVAR_36', 111.0, points);
+    // Inject massive butterfly fringe anomaly (3.2 rad) at (4, 4)
+    grid[4][4] = 3.2; // diameter = 3.2 * 7.5 = 24.0 mm > 18.0 mm
 
-    expect(report.defectsDetected.length).toBeGreaterThan(0);
-    expect(report.defectsDetected[0].flawType).toBe('SUB_SURFACE_DELAMINATION');
-    expect(report.defectsDetected[0].severity).toBe('CRITICAL');
-    expect(report.membraneIntegrityIndex).toBeLessThan(75);
-    expect(report.safetyStatus).not.toBe('OPTIMAL_FULL_CRYOGENIC_CERTIFIED');
-  });
+    const phaseMap: ShearographyPhaseMap = {
+      laserWavelengthNm: 532.0,
+      shearDistanceMm: 8.0,
+      measuredPhaseDifferenceRad: grid,
+      thermalExcitationDeltaKelvin: 4.0,
+    };
 
-  it('throws error for empty points array', () => {
-    expect(() => {
-      analyzer.analyzeShearogram('TANK-ERR', 'INVAR_36', 111.0, []);
-    }).toThrow('Valid tankSegmentId and non-empty points array are required.');
+    const res = analyzer.analyzePhaseMap(mockSpec, phaseMap);
+    expect(res.totalDefectsFound).toBe(1);
+    expect(res.isMembraneIntegrityCertified).toBe(false);
+    expect(res.maxDefectDiameterMm).toBe(24.0);
+    expect(res.defects[0].severity).toBe('CRITICAL_DELAMINATION');
+    expect(res.recommendations[0]).toContain('CRITICAL');
   });
 });
