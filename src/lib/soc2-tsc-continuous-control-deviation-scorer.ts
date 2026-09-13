@@ -119,3 +119,5 @@ export class Soc2ContinuousControlDeviationScorer {
     };
   }
 }
+
+export const Soc2TscContinuousControlDeviationScorer = Soc2ContinuousControlDeviationScorer;
