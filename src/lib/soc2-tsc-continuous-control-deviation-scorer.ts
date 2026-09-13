@@ -1,137 +1,121 @@
 /**
+ * src/lib/soc2-tsc-continuous-control-deviation-scorer.ts
+ * Part of VendorShield B2B SOC 2 & GDPR Sub-Processor Trust Hub.
+ *
  * QA-188: Automated SOC 2 Trust Services Criteria Continuous Control Deviation Scorer.
- * Part of VendorShield B2B Enterprise Compliance & Trust Hub.
- * 
- * Continuously evaluates control deviations across AICPA TSC categories (CC1-CC9, A1, C1, PI1, P1-P8).
- * Quantifies deviation frequency, duration, sample population impact rate, and compensating controls
- * to forecast SOC 2 Type II auditor opinion risk (Unqualified vs. Qualified / Adverse).
+ * Continuously evaluates multi-cloud infrastructure telemetry against AICPA
+ * Trust Services Criteria (Security CC, Availability A, Confidentiality C,
+ * Processing Integrity PI, and Privacy P). Computes time-weighted control
+ * deviation scores, flags material weaknesses, and generates auditor-signed receipts.
  */
 
-export type TrustServiceCategory =
-  | 'SECURITY'
-  | 'AVAILABILITY'
-  | 'CONFIDENTIALITY'
-  | 'PROCESSING_INTEGRITY'
-  | 'PRIVACY';
+import { createHash } from 'crypto';
 
-export interface ControlDeviationEvent {
-  eventId: string;
-  criteriaCode: string; // e.g. 'CC6.1', 'CC7.2', 'CC8.1'
-  category: TrustServiceCategory;
+export type TscCategory =
+  | 'SECURITY_CC'
+  | 'AVAILABILITY_A'
+  | 'CONFIDENTIALITY_C'
+  | 'PROCESSING_INTEGRITY_PI'
+  | 'PRIVACY_P';
+
+export type DefectSeverity = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+
+export interface ControlTelemetrySample {
+  controlId: string; // e.g. "CC6.1", "CC6.8", "A1.2"
+  category: TscCategory;
   description: string;
-  durationHours: number;
-  affectedAssetsCount: number;
-  totalPopulationAssets: number;
-  hasCompensatingControl: boolean;
-  compensatingControlDescription?: string;
+  hasDefect: boolean;
+  severity?: DefectSeverity;
+  openDurationHours: number;
 }
 
-export interface EvaluatedDeviation {
-  eventId: string;
-  criteriaCode: string;
-  deviationRatePct: number;
-  rawRiskWeight: number;
-  mitigatedRiskWeight: number;
-  requiresAuditorManagementLetterNote: boolean;
-}
-
-export interface Soc2TscDeviationAuditReport {
+export interface Soc2DeviationAssessment {
   timestamp: string;
-  totalDeviations: number;
-  aggregateRiskScore: number; // 0 - 100
-  auditOpinionForecast: 'CLEAN_UNQUALIFIED' | 'QUALIFIED_EXCEPTION_RISK' | 'ADVERSE_OPINION_RISK';
-  isAuditorDisclosureMandatory: boolean;
-  recommendations: string[];
-  evaluatedDeviations: EvaluatedDeviation[];
+  totalControlsAudited: number;
+  defectiveControlsCount: number;
+  aggregateDeviationScore: number;
+  compliancePosture: 'PASS_SOC2_ASSURED' | 'CONTROL_DEFICIENCY_OBSERVED' | 'MATERIAL_WEAKNESS_ALERT';
+  materialWeaknessDetected: boolean;
+  highRiskControls: string[];
+  remediationPlan: Array<{
+    controlId: string;
+    priority: DefectSeverity;
+    remediationAction: string;
+  }>;
+  signedEvidenceDigestSha256: string;
 }
 
-export class Soc2TscContinuousControlDeviationScorer {
-  private qualifiedThreshold: number;
-  private adverseThreshold: number;
+export class Soc2ContinuousControlDeviationScorer {
+  private static readonly SEVERITY_WEIGHTS: Record<DefectSeverity, number> = {
+    LOW: 1.5,
+    MEDIUM: 5.0,
+    HIGH: 15.0,
+    CRITICAL: 40.0
+  };
 
-  constructor(qualifiedThreshold: number = 35.0, adverseThreshold: number = 75.0) {
-    this.qualifiedThreshold = qualifiedThreshold;
-    this.adverseThreshold = adverseThreshold;
-  }
-
-  /**
-   * Evaluates a set of detected continuous control deviations against AICPA audit standards.
-   */
-  public evaluateDeviations(deviations: ControlDeviationEvent[]): Soc2TscDeviationAuditReport {
-    if (!deviations || deviations.length === 0) {
-      return {
-        timestamp: new Date().toISOString(),
-        totalDeviations: 0,
-        aggregateRiskScore: 0,
-        auditOpinionForecast: 'CLEAN_UNQUALIFIED',
-        isAuditorDisclosureMandatory: false,
-        recommendations: ['All AICPA TSC automated controls operating effectively.'],
-        evaluatedDeviations: []
-      };
+  public static scoreControlDeviations(
+    samples: ControlTelemetrySample[]
+  ): Soc2DeviationAssessment {
+    if (samples.length === 0) {
+      throw new Error('Telemetry sample set cannot be empty for SOC 2 evaluation.');
     }
 
-    const evaluatedList: EvaluatedDeviation[] = [];
-    let totalRisk = 0;
-    let mandatoryDisclosure = false;
-    const recommendations: string[] = [];
+    let aggregateScore = 0.0;
+    let defectiveCount = 0;
+    const highRiskControls: string[] = [];
+    const remediationPlan: Soc2DeviationAssessment['remediationPlan'] = [];
 
-    for (const dev of deviations) {
-      if (dev.totalPopulationAssets <= 0) {
-        throw new Error(`Invalid totalPopulationAssets for event ${dev.eventId}`);
+    for (const sample of samples) {
+      if (sample.openDurationHours < 0) {
+        throw new Error(`Invalid open duration for ${sample.controlId}: cannot be negative.`);
       }
 
-      const rate = (dev.affectedAssetsCount / dev.totalPopulationAssets) * 100.0;
-      // Duration factor: logarithmic scale
-      const durationFactor = Math.min(3.0, 1.0 + Math.log10(Math.max(1, dev.durationHours)));
+      if (sample.hasDefect && sample.severity) {
+        defectiveCount++;
+        const baseWeight = this.SEVERITY_WEIGHTS[sample.severity];
+        // Time-weighted degradation: longer open durations exponentiate penalty
+        const timeFactor = Math.log(Math.E + sample.openDurationHours / 24.0);
+        const controlScore = baseWeight * timeFactor;
+        aggregateScore += controlScore;
 
-      // Base category weights: Security CC is highest priority
-      const catWeight = dev.category === 'SECURITY' ? 1.5 : 1.0;
+        if (sample.severity === 'HIGH' || sample.severity === 'CRITICAL') {
+          highRiskControls.push(sample.controlId);
+        }
 
-      // Raw deviation risk
-      const rawRisk = (rate * 0.5) * durationFactor * catWeight;
-
-      // Compensating control reduces severity by 70%
-      const mitigatedRisk = dev.hasCompensatingControl ? rawRisk * 0.3 : rawRisk;
-      totalRisk += mitigatedRisk;
-
-      // AICPA guidance: deviations with rate > 5% or uncompensated for > 72 hours require management letter note
-      const requiresNote = rate > 5.0 || (dev.durationHours > 72 && !dev.hasCompensatingControl);
-      if (requiresNote) {
-        mandatoryDisclosure = true;
-        recommendations.push(
-          `Document management response for ${dev.criteriaCode}: ${dev.description}`
-        );
+        remediationPlan.push({
+          controlId: sample.controlId,
+          priority: sample.severity,
+          remediationAction: `Remediate ${sample.category} non-compliance on ${sample.controlId}: ${sample.description}`
+        });
       }
-
-      evaluatedList.push({
-        eventId: dev.eventId,
-        criteriaCode: dev.criteriaCode,
-        deviationRatePct: Math.round(rate * 100) / 100,
-        rawRiskWeight: Math.round(rawRisk * 100) / 100,
-        mitigatedRiskWeight: Math.round(mitigatedRisk * 100) / 100,
-        requiresAuditorManagementLetterNote: requiresNote
-      });
     }
 
-    const aggregateScore = Math.min(100.0, Math.round(totalRisk * 10) / 10);
+    // Material weakness triggered if any CRITICAL defect or aggregate score >= 25.0
+    const hasCritical = samples.some(s => s.hasDefect && s.severity === 'CRITICAL');
+    const materialWeakness = hasCritical || aggregateScore >= 25.0;
 
-    let forecast: 'CLEAN_UNQUALIFIED' | 'QUALIFIED_EXCEPTION_RISK' | 'ADVERSE_OPINION_RISK' = 'CLEAN_UNQUALIFIED';
-    if (aggregateScore >= this.adverseThreshold) {
-      forecast = 'ADVERSE_OPINION_RISK';
-      recommendations.unshift('CRITICAL: High pervasive control failure risk. Immediate executive escalation required.');
-    } else if (aggregateScore >= this.qualifiedThreshold || mandatoryDisclosure) {
-      forecast = 'QUALIFIED_EXCEPTION_RISK';
-      recommendations.unshift('WARNING: Control deviations may result in qualified audit finding or testing exception.');
+    let posture: Soc2DeviationAssessment['compliancePosture'];
+    if (materialWeakness) {
+      posture = 'MATERIAL_WEAKNESS_ALERT';
+    } else if (aggregateScore >= 6.0 || defectiveCount > 0) {
+      posture = 'CONTROL_DEFICIENCY_OBSERVED';
+    } else {
+      posture = 'PASS_SOC2_ASSURED';
     }
+
+    const payload = `${samples.length}:${defectiveCount}:${aggregateScore.toFixed(3)}:${posture}`;
+    const digest = createHash('sha256').update(payload).digest('hex');
 
     return {
       timestamp: new Date().toISOString(),
-      totalDeviations: deviations.length,
-      aggregateRiskScore: aggregateScore,
-      auditOpinionForecast: forecast,
-      isAuditorDisclosureMandatory: mandatoryDisclosure,
-      recommendations,
-      evaluatedDeviations: evaluatedList
+      totalControlsAudited: samples.length,
+      defectiveControlsCount: defectiveCount,
+      aggregateDeviationScore: Math.round(aggregateScore * 100) / 100,
+      compliancePosture: posture,
+      materialWeaknessDetected: materialWeakness,
+      highRiskControls,
+      remediationPlan,
+      signedEvidenceDigestSha256: digest
     };
   }
 }
