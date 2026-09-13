@@ -65,6 +65,6 @@ describe('SNAP-61: NaturalGasPipelineCathodicProtectionPredictor', () => {
     const lastStation = result.stations[result.stations.length - 1];
     expect(lastStation.isCriterionSatisfied).toBe(false);
     expect(lastStation.status).toBe('UNDER_PROTECTED');
-    expect(result.recommendations.some(r => r.includes('INSTALL_INTERMEDIATE_GROUNDBED'))).toBe(true);
+    expect(result.recommendations.some(r => r.includes('INSTALL_INTERMEDIATE_ANODES'))).toBe(true);
   });
 });
