@@ -1,136 +1,142 @@
 /**
  * QA-198: Zero-Trust Continuous Session Posture Re-Attestation & Dynamic Stepped-Up Auth Engine.
- * Part of VendorShield B2B SOC 2 & GDPR Sub-Processor Trust Hub.
+ * Part of VendorShield Continuous Compliance & Third-Party Risk SaaS.
  *
- * Implements continuous zero-trust session telemetry evaluation per NIST SP 800-207 & SOC 2 CC6.1:
- * - Real-time device posture verification (EDR health, full-disk encryption, secure enclave, jailbreak status).
- * - Contextual risk scoring (IP geovelocity anomalies, Tor/VPN exit node detection, JA4 TLS fingerprint drifts).
- * - Dynamic stepped-up authentication triggers (FIDO2/WebAuthn challenge) and immediate session revocation.
- * - Cryptographic HMAC-SHA256 posture attestation digests and audit logging.
+ * Implements continuous zero-trust session posture re-attestation:
+ * - Real-time device health verification (EDR telemetry, disk encryption, OS patch status)
+ * - Geo-velocity & impossible travel detection (km/h thresholding)
+ * - Dynamic risk scoring determining stepped-up authentication (WebAuthn/FIDO2 hardware challenge or session revocation)
+ * - Emits cryptographic SHA-256 session posture audit attestations.
  */
 
-import { createHash, createHmac } from "crypto";
+import { createHash } from "crypto";
 
 export interface DeviceTelemetry {
   deviceId: string;
-  osName: string;
-  osVersion: string;
-  isEdrAgentActive: boolean;
-  isDiskEncrypted: boolean;
-  isJailbrokenOrRooted: boolean;
-  isSecureEnclavePresent: boolean;
+  edrAgentHealthy: boolean;
+  diskEncryptionActive: boolean;
+  osPatchDaysBehind: number;
 }
 
-export interface NetworkContext {
-  ipAddress: string;
-  countryCode: string;
-  asn: number;
-  isTorOrVpnExitNode: boolean;
-  tlsJa4Fingerprint: string;
-  geoVelocityKmPerHour: number; // Speed between consecutive requests
+export interface GeoLocationStamp {
+  latitude: number;
+  longitude: number;
+  timestampEpochMs: number;
 }
 
-export interface SessionPostureState {
+export interface SessionPostureInput {
   sessionId: string;
-  tenantId: string;
   userId: string;
-  currentRiskScore: number; // 0 (pristine) to 100 (compromised)
-  attestationStatus: "VALID" | "STEPPED_UP_AUTH_REQUIRED" | "SESSION_REVOKED_COMPROMISED";
-  requiredAction?: "NONE" | "WEBAUTHN_FIDO2_CHALLENGE" | "TERMINATE_AND_LOCK_ACCOUNT";
-  anomalyFlags: string[];
-  attestationDigest: string;
+  device: DeviceTelemetry;
+  currentGeo: GeoLocationStamp;
+  previousGeo?: GeoLocationStamp;
+  sessionAgeMinutes: number;
+  privilegeLevel: "STANDARD" | "ADMIN" | "SUPERADMIN";
+}
+
+export interface SessionPostureEvaluationResult {
+  sessionId: string;
+  userId: string;
+  cumulativeRiskScore: number; // 0 (pristine) - 100 (critical threat)
+  postureStatus: "HEALTHY" | "STEPPED_UP_AUTH_REQUIRED" | "IMMEDIATE_REVOCATION_REQUIRED";
+  requiresWebAuthnChallenge: boolean;
+  isSessionTerminated: boolean;
+  riskFactors: string[];
+  postureAttestationToken: string;
 }
 
 export class ZeroTrustSessionPostureReAttestor {
-  private static readonly MAX_TOLERABLE_GEO_VELOCITY_KMH = 900.0; // Airplane speed limit for physical impossibility
+  // Speed of sound/commercial flight cap: 900 km/h
+  public static readonly MAX_FEASIBLE_TRAVEL_SPEED_KMH = 950.0;
 
-  /**
-   * Re-evaluates session posture continuously and determines required auth stepped-up action.
-   */
-  public static evaluateSessionPosture(
-    sessionId: string,
-    tenantId: string,
-    userId: string,
-    device: DeviceTelemetry,
-    network: NetworkContext,
-    secretKey: string
-  ): SessionPostureState {
-    if (!sessionId || !tenantId || !userId) {
-      throw new Error("Invalid session context: sessionId, tenantId, and userId are required.");
+  public static evaluateSessionPosture(input: SessionPostureInput): SessionPostureEvaluationResult {
+    if (!input.sessionId || !input.userId) {
+      throw new Error("sessionId and userId are required.");
     }
-    if (!secretKey || secretKey.length < 16) {
-      throw new Error("Attestation secret key must be at least 16 characters.");
+    if (input.sessionAgeMinutes < 0) {
+      throw new Error("sessionAgeMinutes cannot be negative.");
     }
 
-    const anomalyFlags: string[] = [];
     let riskScore = 0;
+    const riskFactors: string[] = [];
 
-    // 1. Device posture checks (EDR, Encryption, Rooting)
-    if (device.isJailbrokenOrRooted) {
-      anomalyFlags.push("CRITICAL_DEVICE_JAILBROKEN_OR_ROOTED");
-      riskScore += 60;
+    // 1. Device Security Checks
+    if (!input.device.edrAgentHealthy) {
+      riskScore += 45;
+      riskFactors.push("EDR_AGENT_UNHEALTHY_OR_INACTIVE");
     }
-    if (!device.isEdrAgentActive) {
-      anomalyFlags.push("HIGH_EDR_AGENT_INACTIVE_OR_TAMPERED");
-      riskScore += 35;
+    if (!input.device.diskEncryptionActive) {
+      riskScore += 25;
+      riskFactors.push("DEVICE_DISK_ENCRYPTION_DISABLED");
     }
-    if (!device.isDiskEncrypted) {
-      anomalyFlags.push("MEDIUM_FULL_DISK_ENCRYPTION_DISABLED");
+    if (input.device.osPatchDaysBehind > 30) {
       riskScore += 20;
-    }
-    if (!device.isSecureEnclavePresent) {
-      anomalyFlags.push("LOW_HARDWARE_SECURE_ENCLAVE_ABSENT");
-      riskScore += 10;
+      riskFactors.push("OS_CRITICAL_PATCH_OUTDATED");
     }
 
-    // 2. Network posture checks (Tor/VPN, Impossible travel)
-    if (network.isTorOrVpnExitNode) {
-      anomalyFlags.push("HIGH_ANONYMIZING_PROXY_OR_TOR_DETECTED");
-      riskScore += 30;
-    }
-    if (network.geoVelocityKmPerHour > this.MAX_TOLERABLE_GEO_VELOCITY_KMH) {
-      anomalyFlags.push(`CRITICAL_PHYSICALLY_IMPOSSIBLE_TRAVEL_${Math.round(network.geoVelocityKmPerHour)}KMH`);
-      riskScore += 50;
-    }
-
-    riskScore = Math.min(100, riskScore);
-
-    // 3. Determine enforcement policy
-    let attestationStatus: SessionPostureState["attestationStatus"] = "VALID";
-    let requiredAction: SessionPostureState["requiredAction"] = "NONE";
-
-    if (riskScore >= 75 || device.isJailbrokenOrRooted) {
-      attestationStatus = "SESSION_REVOKED_COMPROMISED";
-      requiredAction = "TERMINATE_AND_LOCK_ACCOUNT";
-    } else if (riskScore >= 30) {
-      attestationStatus = "STEPPED_UP_AUTH_REQUIRED";
-      requiredAction = "WEBAUTHN_FIDO2_CHALLENGE";
+    // 2. Impossible Travel / Geo-velocity analysis
+    if (input.previousGeo) {
+      const deltaHours = (input.currentGeo.timestampEpochMs - input.previousGeo.timestampEpochMs) / (1000 * 3600);
+      if (deltaHours > 0) {
+        const distanceKm = this.calculateHaversineDistanceKm(
+          input.previousGeo.latitude,
+          input.previousGeo.longitude,
+          input.currentGeo.latitude,
+          input.currentGeo.longitude
+        );
+        const speedKmh = distanceKm / deltaHours;
+        if (speedKmh > this.MAX_FEASIBLE_TRAVEL_SPEED_KMH) {
+          riskScore += 60;
+          riskFactors.push(`IMPOSSIBLE_TRAVEL_DETECTED_${Math.round(speedKmh)}_KMH`);
+        }
+      }
     }
 
-    const payload = {
-      sessionId,
-      tenantId,
-      userId,
-      deviceId: device.deviceId,
-      riskScore,
-      attestationStatus,
-      requiredAction,
-      anomalyFlags
-    };
+    // 3. Privilege creep & session age
+    if (input.privilegeLevel === "SUPERADMIN" && input.sessionAgeMinutes > 240) {
+      riskScore += 25;
+      riskFactors.push("SUPERADMIN_SESSION_AGE_EXCEEDED");
+    }
 
-    const attestationDigest = createHmac("sha256", secretKey)
-      .update(JSON.stringify(payload))
-      .digest("hex");
+    // Cap score at 100
+    riskScore = Math.min(100, Math.max(0, riskScore));
+
+    let postureStatus: "HEALTHY" | "STEPPED_UP_AUTH_REQUIRED" | "IMMEDIATE_REVOCATION_REQUIRED" = "HEALTHY";
+    let requiresWebAuthnChallenge = false;
+    let isSessionTerminated = false;
+
+    if (riskScore >= 75) {
+      postureStatus = "IMMEDIATE_REVOCATION_REQUIRED";
+      isSessionTerminated = true;
+    } else if (riskScore >= 35) {
+      postureStatus = "STEPPED_UP_AUTH_REQUIRED";
+      requiresWebAuthnChallenge = true;
+    }
+
+    const digestRaw = `${input.sessionId}:${input.userId}:${riskScore}:${postureStatus}:${riskFactors.join(",")}`;
+    const token = createHash("sha256").update(digestRaw).digest("hex");
 
     return {
-      sessionId,
-      tenantId,
-      userId,
-      currentRiskScore: riskScore,
-      attestationStatus,
-      requiredAction,
-      anomalyFlags,
-      attestationDigest
+      sessionId: input.sessionId,
+      userId: input.userId,
+      cumulativeRiskScore: riskScore,
+      postureStatus,
+      requiresWebAuthnChallenge,
+      isSessionTerminated,
+      riskFactors,
+      postureAttestationToken: token
     };
+  }
+
+  private static calculateHaversineDistanceKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
+    const R = 6371; // Earth radius in km
+    const dLat = (lat2 - lat1) * (Math.PI / 180);
+    const dLon = (lon2 - lon1) * (Math.PI / 180);
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) *
+      Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
   }
 }

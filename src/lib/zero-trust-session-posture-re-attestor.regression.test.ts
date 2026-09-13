@@ -1,92 +1,93 @@
 import { describe, it, expect } from "vitest";
 import {
   ZeroTrustSessionPostureReAttestor,
-  DeviceTelemetry,
-  NetworkContext
+  SessionPostureInput,
 } from "./zero-trust-session-posture-re-attestor";
 
-describe("ZeroTrustSessionPostureReAttestor (QA-198)", () => {
-  const secretKey = "enterprise_zt_attestation_hmac_secret_key_999";
-
-  const cleanDevice: DeviceTelemetry = {
-    deviceId: "DEV-MACBOOK-PRO-01",
-    osName: "macOS",
-    osVersion: "15.4",
-    isEdrAgentActive: true,
-    isDiskEncrypted: true,
-    isJailbrokenOrRooted: false,
-    isSecureEnclavePresent: true
+describe("QA-198: ZeroTrustSessionPostureReAttestor", () => {
+  const healthyInput: SessionPostureInput = {
+    sessionId: "sess_xyz123",
+    userId: "usr_alice",
+    device: {
+      deviceId: "dev_macbook_01",
+      edrAgentHealthy: true,
+      diskEncryptionActive: true,
+      osPatchDaysBehind: 5,
+    },
+    currentGeo: {
+      latitude: 40.7128,
+      longitude: -74.006,
+      timestampEpochMs: 1700000000000,
+    },
+    sessionAgeMinutes: 45,
+    privilegeLevel: "STANDARD",
   };
 
-  const cleanNetwork: NetworkContext = {
-    ipAddress: "198.51.100.42",
-    countryCode: "US",
-    asn: 15169,
-    isTorOrVpnExitNode: false,
-    tlsJa4Fingerprint: "t13d1516h2_8daaf6152771_b18509e421b4",
-    geoVelocityKmPerHour: 45.0
-  };
-
-  it("should validate a compliant low-risk enterprise session", () => {
-    const res = ZeroTrustSessionPostureReAttestor.evaluateSessionPosture(
-      "SESS-1001",
-      "TENANT-GLOBEX",
-      "USR-ALICE",
-      cleanDevice,
-      cleanNetwork,
-      secretKey
-    );
-
-    expect(res.attestationStatus).toBe("VALID");
-    expect(res.currentRiskScore).toBe(0);
-    expect(res.requiredAction).toBe("NONE");
-    expect(res.anomalyFlags).toHaveLength(0);
-    expect(res.attestationDigest).toHaveLength(64);
+  it("evaluates a pristine device and session posture as HEALTHY", () => {
+    const result = ZeroTrustSessionPostureReAttestor.evaluateSessionPosture(healthyInput);
+    expect(result.postureStatus).toBe("HEALTHY");
+    expect(result.cumulativeRiskScore).toBe(0);
+    expect(result.requiresWebAuthnChallenge).toBe(false);
+    expect(result.isSessionTerminated).toBe(false);
+    expect(result.postureAttestationToken).toHaveLength(64);
   });
 
-  it("should trigger stepped-up auth when EDR is inactive or anonymizing VPN is detected", () => {
-    const degradedNetwork: NetworkContext = {
-      ...cleanNetwork,
-      isTorOrVpnExitNode: true
+  it("triggers STEPPED_UP_AUTH_REQUIRED when EDR agent is unhealthy", () => {
+    const degradedInput: SessionPostureInput = {
+      ...healthyInput,
+      device: {
+        ...healthyInput.device,
+        edrAgentHealthy: false, // +45 risk
+      },
     };
 
-    const res = ZeroTrustSessionPostureReAttestor.evaluateSessionPosture(
-      "SESS-1002",
-      "TENANT-GLOBEX",
-      "USR-BOB",
-      cleanDevice,
-      degradedNetwork,
-      secretKey
-    );
-
-    expect(res.attestationStatus).toBe("STEPPED_UP_AUTH_REQUIRED");
-    expect(res.requiredAction).toBe("WEBAUTHN_FIDO2_CHALLENGE");
-    expect(res.currentRiskScore).toBe(30);
-    expect(res.anomalyFlags).toContain("HIGH_ANONYMIZING_PROXY_OR_TOR_DETECTED");
+    const result = ZeroTrustSessionPostureReAttestor.evaluateSessionPosture(degradedInput);
+    expect(result.postureStatus).toBe("STEPPED_UP_AUTH_REQUIRED");
+    expect(result.cumulativeRiskScore).toBe(45);
+    expect(result.requiresWebAuthnChallenge).toBe(true);
+    expect(result.isSessionTerminated).toBe(false);
   });
 
-  it("should revoke session immediately upon jailbreak or physically impossible geo-velocity", () => {
-    const compromisedDevice: DeviceTelemetry = {
-      ...cleanDevice,
-      isJailbrokenOrRooted: true
-    };
-    const impossibleTravelNetwork: NetworkContext = {
-      ...cleanNetwork,
-      geoVelocityKmPerHour: 3400.0 // Supersonic travel anomaly
+  it("triggers IMMEDIATE_REVOCATION_REQUIRED upon impossible travel anomaly", () => {
+    // NYC to London in 30 minutes (> 11,000 km/h)
+    const impossibleTravelInput: SessionPostureInput = {
+      ...healthyInput,
+      previousGeo: {
+        latitude: 40.7128,
+        longitude: -74.006, // NYC
+        timestampEpochMs: 1700000000000,
+      },
+      currentGeo: {
+        latitude: 51.5074,
+        longitude: -0.1278, // London
+        timestampEpochMs: 1700000000000 + 30 * 60 * 1000, // 30 mins later
+      },
+      device: {
+        ...healthyInput.device,
+        diskEncryptionActive: false, // +25 risk
+      },
     };
 
-    const res = ZeroTrustSessionPostureReAttestor.evaluateSessionPosture(
-      "SESS-1003",
-      "TENANT-GLOBEX",
-      "USR-ATTACKER",
-      compromisedDevice,
-      impossibleTravelNetwork,
-      secretKey
-    );
+    const result = ZeroTrustSessionPostureReAttestor.evaluateSessionPosture(impossibleTravelInput);
+    expect(result.postureStatus).toBe("IMMEDIATE_REVOCATION_REQUIRED");
+    expect(result.cumulativeRiskScore).toBeGreaterThanOrEqual(75);
+    expect(result.isSessionTerminated).toBe(true);
+    expect(result.riskFactors.some((r) => r.startsWith("IMPOSSIBLE_TRAVEL"))).toBe(true);
+  });
 
-    expect(res.attestationStatus).toBe("SESSION_REVOKED_COMPROMISED");
-    expect(res.requiredAction).toBe("TERMINATE_AND_LOCK_ACCOUNT");
-    expect(res.currentRiskScore).toBe(100);
-    expect(res.anomalyFlags).toContain("CRITICAL_DEVICE_JAILBROKEN_OR_ROOTED");
+  it("validates input boundaries", () => {
+    expect(() => {
+      ZeroTrustSessionPostureReAttestor.evaluateSessionPosture({
+        ...healthyInput,
+        sessionId: "",
+      });
+    }).toThrow();
+
+    expect(() => {
+      ZeroTrustSessionPostureReAttestor.evaluateSessionPosture({
+        ...healthyInput,
+        sessionAgeMinutes: -10,
+      });
+    }).toThrow();
   });
 });
