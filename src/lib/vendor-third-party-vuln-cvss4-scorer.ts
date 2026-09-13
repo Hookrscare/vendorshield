@@ -162,11 +162,16 @@ export class VendorThirdPartyVulnCvss4Scorer {
       VendorThirdPartyVulnCvss4Scorer.VENDOR_EXPOSURE_MULTIPLIERS[disclosure.vendorExposure] || 1.0;
     const contextualScore = Math.min(10.0, Math.round(baseScore * multiplier * 10) / 10);
 
-    // Remediation SLA: High severity, contextual score >= 7.0, or financial PII exposure
-    let slaHours = 720; // 30 days default
+    // Remediation SLA: High severity, contextual score >= 7.0, or financial PII exposure (PCI-DSS max 7 days)
+    let slaHours = 720; // 30 days
     if (severity === 'CRITICAL' || contextualScore >= 9.0) {
       slaHours = 48; // 48h emergency SLA
-    } else if (severity === 'HIGH' || contextualScore >= 7.0) {
+    } else if (
+      severity === 'HIGH' ||
+      contextualScore >= 7.0 ||
+      disclosure.vendorExposure === 'PII_FINANCIAL' ||
+      (disclosure.vendorExposure === 'INFRASTRUCTURE_ADMIN' && contextualScore >= 6.0)
+    ) {
       slaHours = 168; // 7 days
     } else if (severity === 'MEDIUM' || contextualScore >= 4.0) {
       slaHours = 360; // 15 days
