@@ -21,8 +21,8 @@ describe('QA-188: Sub-Processor Cross-Tenant Encryption Key Isolation Validator'
   });
 
   it('derives unique keys for distinct tenants', () => {
-    const keyAcme = CrossTenantKmsIsolationValidator.deriveTenantKey(MASTER_KEY, TENANT_ACME);
-    const keyGlobex = CrossTenantKmsIsolationValidator.deriveTenantKey(MASTER_KEY, TENANT_GLOBEX);
+    const keyAcme = Buffer.from(CrossTenantKmsIsolationValidator.deriveTenantKey(MASTER_KEY, TENANT_ACME));
+    const keyGlobex = Buffer.from(CrossTenantKmsIsolationValidator.deriveTenantKey(MASTER_KEY, TENANT_GLOBEX));
 
     expect(keyAcme.equals(keyGlobex)).toBe(false);
     expect(keyAcme.length).toBe(32);
