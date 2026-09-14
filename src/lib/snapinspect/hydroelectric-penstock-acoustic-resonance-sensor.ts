@@ -1,156 +1,114 @@
 /**
  * SNAP-90: Hydroelectric Penstock Acoustic Resonance & Hydraulic Transient Water-Hammer Sensor.
- * Part of SnapInspect AI Tactical Field Inspection CAD & Mobile Voice AI.
+ * Part of SnapInspect AI Heavy Infrastructure & Geotechnical Platform.
  *
- * Simulates and monitors high-head hydroelectric steel penstocks under rapid valve closure / transient loads:
- * - Computes acoustic pressure wave propagation velocity (Allievi-Joukowsky formula with pipe elasticity).
- * - Solves transient Joukowsky water-hammer shockwave pressure rise (ΔP = ρ * a * Δv).
- * - Analyzes acoustic resonance standing wave modes (f_n = n * a / 4L or 2L) to prevent governor governor hunting.
- * - Detects high-frequency ultrasonic acoustic emission (AE) bursts from cavitation implosion and fatigue cracking.
- * - Computes dynamic hoop stress (σ_h = P * D / 2e) vs allowable ASME/ASCE yield limits.
- * - Issues automated emergency valve damping and guide vane closure rate recommendations.
+ * Implements ASME PTC 18 & IEC 60041 Hydroelectric Penstock Structural Integrity Monitoring:
+ * - Joukowsky equation hydraulic transient water-hammer pressure spike modeling (dP = rho * a * dv)
+ * - Acoustic resonance harmonics of closed/throttled turbine wicket gate penstocks (fn = n * a / 4L)
+ * - Cavitation acoustic emission (AE) pitting detection (high-frequency ultrasonic spikes)
+ * - Automated emergency turbine bypass valve governor mitigation with SHA-256 integrity digests.
  */
 
-export interface PenstockGeometry {
+import { createHash } from "crypto";
+
+export interface PenstockTelemetry {
   penstockId: string;
-  lengthMeters: number;
-  outerDiameterMeters: number;
-  wallThicknessMeters: number;
-  steelModulusGpa: number; // typically 205-210 GPa for ASTM A516
-  steelPoissonRatio: number; // ~0.30
-  designYieldStrengthMpa: number; // e.g. 345 MPa
+  penstockLengthMeters: number;         // e.g. 850.0 m
+  innerDiameterMeters: number;          // e.g. 3.2 m
+  wallThicknessMm: number;              // e.g. 38.0 mm (high-strength quenched steel)
+  waterAcousticWaveSpeedMps: number;    // Acoustic wave velocity 'a' (typically 1000 - 1300 m/s)
+  initialFlowVelocityMps: number;       // Steady-state velocity before valve motion (e.g. 4.5 m/s)
+  emergencyValveClosureTimeSec: number; // e.g. 3.5 s (rapid closure)
+  measuredCavitationAcousticEnergyDb: number; // Ultrasonic AE energy (dB re 1 uV)
 }
 
-export interface WaterFlowState {
-  waterDensityKgM3: number; // ~1000 kg/m3
-  waterBulkModulusGpa: number; // ~2.15 GPa
-  initialFlowVelocityMps: number; // e.g. 4.5 m/s
-  rapidClosureDurationSeconds: number; // e.g. 0.8 s
-  staticHeadMeters: number; // e.g. 350 m static head (~3.43 MPa)
-}
-
-export interface AcousticEmissionTelemetry {
-  sensorRmsDb: number; // 0-120 dB
-  peakFrequencyKhz: number; // 20 - 500 kHz
-  ringdownCountsPerSec: number;
-  cavitationEnergyMj: number;
-}
-
-export type PenstockAlarmSeverity = "NORMAL" | "ADVISORY" | "CRITICAL_WATER_HAMMER" | "RUPTURE_RISK";
-
-export interface WaterHammerAnalysisResult {
+export interface PenstockStructuralAssessment {
   penstockId: string;
-  acousticWaveSpeedMps: number;
-  reflectionTimeSeconds: number; // T_r = 2L / a
-  isDirectWaterHammer: boolean; // if closure_time <= T_r
-  joukowskyPressureSurgeMpa: number;
-  maximumTransientPressureMpa: number;
-  dynamicHoopStressMpa: number;
-  stressRatioToYieldPct: number;
-  acousticFundamentalResonanceHz: number;
-  cavitationSeverity: "NONE" | "MODERATE" | "SEVERE_EROSION";
-  severity: PenstockAlarmSeverity;
-  governorValveDampingRecommended: boolean;
-  recommendedMinClosureTimeSeconds: number;
-  analyzedAt: string;
+  fundamentalResonanceFreqHz: number;
+  joukowskyWaterHammerPressureBar: number;
+  pipeHoopStressMpa: number;
+  transientSeverity: "NOMINAL_OPERATING" | "MODERATE_PRESSURE_SURGE" | "CRITICAL_WATER_HAMMER_RUPTURE_RISK";
+  cavitationDamageRisk: "LOW_NORMAL" | "ELEVATED_EROSION" | "SEVERE_PITTING_IMMINENT_LEAK";
+  emergencySurgeReliefTriggered: boolean;
+  penstockSafetyCertificate: string;
 }
 
 export class HydroelectricPenstockAcousticResonanceSensor {
-  /**
-   * Evaluates hydraulic transient water-hammer and acoustic resonance risks for a penstock section.
-   */
-  public static analyzeTransient(
-    geometry: PenstockGeometry,
-    flow: WaterFlowState,
-    ae: AcousticEmissionTelemetry
-  ): WaterHammerAnalysisResult {
-    const K = flow.waterBulkModulusGpa * 1e9;
-    const E = geometry.steelModulusGpa * 1e9;
-    const rho = flow.waterDensityKgM3;
-    const D = geometry.outerDiameterMeters - 2 * geometry.wallThicknessMeters;
-    const e = geometry.wallThicknessMeters;
+  private static readonly WATER_DENSITY_KG_M3 = 1000.0;
+  // Standard high-strength penstock steel allowable hoop stress (e.g. 250 MPa)
+  private static readonly MAX_SAFE_HOOP_STRESS_MPA = 240.0;
 
-    // Allievi equation for wave speed in an elastic thin/thick walled conduit (anchored with expansion joints):
-    // c1 = 1 - 0.5 * nu
-    const c1 = 1.0 - 0.5 * geometry.steelPoissonRatio;
-    const elasticityFactor = (K / E) * (D / e) * c1;
-    const waveSpeed = Math.sqrt((K / rho) / (1.0 + elasticityFactor));
+  public static evaluatePenstockIntegrity(telemetry: PenstockTelemetry): PenstockStructuralAssessment {
+    if (!telemetry.penstockId) {
+      throw new Error("penstockId cannot be empty.");
+    }
+    if (telemetry.penstockLengthMeters <= 0 || telemetry.innerDiameterMeters <= 0 || telemetry.wallThicknessMm <= 0) {
+      throw new Error("Penstock geometric dimensions must be strictly positive.");
+    }
+    if (telemetry.emergencyValveClosureTimeSec <= 0) {
+      throw new Error("emergencyValveClosureTimeSec must be strictly positive.");
+    }
 
-    // Conduit acoustic reflection round-trip time: T_r = 2 * L / a
-    const reflectionTime = (2.0 * geometry.lengthMeters) / waveSpeed;
+    const a = telemetry.waterAcousticWaveSpeedMps;
+    const L = telemetry.penstockLengthMeters;
+    const dv = telemetry.initialFlowVelocityMps;
 
-    // Static pressure (P_static = rho * g * H)
-    const staticPressurePa = rho * 9.80665 * flow.staticHeadMeters;
-    const staticPressureMpa = staticPressurePa / 1e6;
+    // 1. Fundamental acoustic quarter-wave resonance frequency f1 = a / (4 * L)
+    const fundamentalFreq = Math.round((a / (4.0 * L)) * 1000) / 1000;
 
-    // Direct vs indirect water hammer
-    const isDirect = flow.rapidClosureDurationSeconds <= reflectionTime;
+    // 2. Critical valve closure time 2L / a (wave reflection round-trip)
+    const roundTripTime = (2.0 * L) / a;
 
-    let joukowskySurgePa = 0.0;
-    if (isDirect) {
-      // Full Joukowsky surge: ΔP = ρ * a * v0
-      joukowskySurgePa = rho * waveSpeed * flow.initialFlowVelocityMps;
+    // 3. Joukowsky water hammer pressure surge dP = rho * a * dv
+    // If closure time Tc <= 2L/a, full Joukowsky surge occurs; otherwise scaled by (roundTripTime / Tc)
+    let deltaP_pascals: number;
+    if (telemetry.emergencyValveClosureTimeSec <= roundTripTime) {
+      deltaP_pascals = this.WATER_DENSITY_KG_M3 * a * dv;
     } else {
-      // Linearized indirect surge: ΔP = (2 * L * ρ * v0) / T_c
-      joukowskySurgePa =
-        (2.0 * geometry.lengthMeters * rho * flow.initialFlowVelocityMps) /
-        Math.max(0.01, flow.rapidClosureDurationSeconds);
+      deltaP_pascals = this.WATER_DENSITY_KG_M3 * a * dv * (roundTripTime / telemetry.emergencyValveClosureTimeSec);
     }
 
-    const joukowskySurgeMpa = joukowskySurgePa / 1e6;
-    const maxTransientPressureMpa = staticPressureMpa + joukowskySurgeMpa;
+    const deltaP_bar = Math.round((deltaP_pascals / 1e5) * 100) / 100;
 
-    // Dynamic hoop stress: σ_h = P_max * D / (2 * e)
-    const hoopStressPa = (maxTransientPressureMpa * 1e6 * D) / (2.0 * e);
-    const hoopStressMpa = hoopStressPa / 1e6;
-    const stressRatioPct = (hoopStressMpa / geometry.designYieldStrengthMpa) * 100.0;
+    // 4. Barlow hoop stress: sigma_h = (P * D) / (2 * t)
+    const thicknessMeters = telemetry.wallThicknessMm / 1000.0;
+    const hoopStressMpa = Math.round(((deltaP_pascals * telemetry.innerDiameterMeters) / (2.0 * thicknessMeters * 1e6)) * 100) / 100;
 
-    // Fundamental acoustic standing wave frequency (closed valve, open reservoir): f_0 = a / (4L)
-    const fundamentalResonanceHz = waveSpeed / (4.0 * geometry.lengthMeters);
+    let severity: "NOMINAL_OPERATING" | "MODERATE_PRESSURE_SURGE" | "CRITICAL_WATER_HAMMER_RUPTURE_RISK";
+    let triggerSurgeRelief = false;
 
-    // Cavitation risk assessment from high-frequency ultrasonic energy
-    let cavitationSeverity: "NONE" | "MODERATE" | "SEVERE_EROSION" = "NONE";
-    if (ae.peakFrequencyKhz >= 80 && ae.sensorRmsDb > 65) {
-      cavitationSeverity = ae.sensorRmsDb > 85 ? "SEVERE_EROSION" : "MODERATE";
+    if (hoopStressMpa >= this.MAX_SAFE_HOOP_STRESS_MPA || deltaP_bar > 45.0) {
+      severity = "CRITICAL_WATER_HAMMER_RUPTURE_RISK";
+      triggerSurgeRelief = true;
+    } else if (hoopStressMpa >= 140.0 || deltaP_bar > 20.0) {
+      severity = "MODERATE_PRESSURE_SURGE";
+    } else {
+      severity = "NOMINAL_OPERATING";
     }
 
-    // Determine alarm severity
-    let severity: PenstockAlarmSeverity = "NORMAL";
-    if (stressRatioPct >= 90.0 || (stressRatioPct >= 75.0 && cavitationSeverity === "SEVERE_EROSION")) {
-      severity = "RUPTURE_RISK";
-    } else if (stressRatioPct >= 70.0 || isDirect) {
-      severity = "CRITICAL_WATER_HAMMER";
-    } else if (stressRatioPct >= 50.0 || cavitationSeverity === "MODERATE") {
-      severity = "ADVISORY";
+    // 5. Cavitation acoustic emission evaluation (dB)
+    let cavitationRisk: "LOW_NORMAL" | "ELEVATED_EROSION" | "SEVERE_PITTING_IMMINENT_LEAK";
+    if (telemetry.measuredCavitationAcousticEnergyDb >= 85.0) {
+      cavitationRisk = "SEVERE_PITTING_IMMINENT_LEAK";
+      triggerSurgeRelief = true;
+    } else if (telemetry.measuredCavitationAcousticEnergyDb >= 65.0) {
+      cavitationRisk = "ELEVATED_EROSION";
+    } else {
+      cavitationRisk = "LOW_NORMAL";
     }
 
-    const governorValveDampingRecommended = severity === "CRITICAL_WATER_HAMMER" || severity === "RUPTURE_RISK";
-
-    // Recommended minimum closure time to prevent direct water-hammer and keep hoop stress < 60% yield:
-    // Safe surge allowable = (0.60 * Yield - static_hoop) * 2e / D
-    const staticHoopMpa = (staticPressureMpa * D) / (2.0 * e);
-    const maxAllowableSurgeHoopMpa = Math.max(10.0, 0.60 * geometry.designYieldStrengthMpa - staticHoopMpa);
-    const maxAllowableSurgePressurePa = (maxAllowableSurgeHoopMpa * 1e6 * 2.0 * e) / D;
-    const recommendedMinClosureTimeSeconds = Math.max(
-      reflectionTime * 1.5,
-      (2.0 * geometry.lengthMeters * rho * flow.initialFlowVelocityMps) / maxAllowableSurgePressurePa
-    );
+    const payload = `${telemetry.penstockId}:${deltaP_bar}:${hoopStressMpa}:${severity}:${cavitationRisk}`;
+    const digest = createHash("sha256").update(payload).digest("hex");
 
     return {
-      penstockId: geometry.penstockId,
-      acousticWaveSpeedMps: Math.round(waveSpeed * 10) / 10,
-      reflectionTimeSeconds: Math.round(reflectionTime * 1000) / 1000,
-      isDirectWaterHammer: isDirect,
-      joukowskyPressureSurgeMpa: Math.round(joukowskySurgeMpa * 100) / 100,
-      maximumTransientPressureMpa: Math.round(maxTransientPressureMpa * 100) / 100,
-      dynamicHoopStressMpa: Math.round(hoopStressMpa * 100) / 100,
-      stressRatioToYieldPct: Math.round(stressRatioPct * 10) / 10,
-      acousticFundamentalResonanceHz: Math.round(fundamentalResonanceHz * 100) / 100,
-      cavitationSeverity,
-      severity,
-      governorValveDampingRecommended,
-      recommendedMinClosureTimeSeconds: Math.round(recommendedMinClosureTimeSeconds * 100) / 100,
-      analyzedAt: new Date().toISOString(),
+      penstockId: telemetry.penstockId,
+      fundamentalResonanceFreqHz: fundamentalFreq,
+      joukowskyWaterHammerPressureBar: deltaP_bar,
+      pipeHoopStressMpa: hoopStressMpa,
+      transientSeverity: severity,
+      cavitationDamageRisk: cavitationRisk,
+      emergencySurgeReliefTriggered: triggerSurgeRelief,
+      penstockSafetyCertificate: digest,
     };
   }
 }
