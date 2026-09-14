@@ -134,10 +134,9 @@ export class SubseaFlowlineVivModalShapeStrakesAnalyzer {
     // Maximum bending moment for simply supported span: M = (F_L * L^2) / 8
     const maxBendingMomentNm = (liftForcePerMeter * Math.pow(L, 2)) / 8.0;
 
-    // Section modulus Z = (pi / 32) * (D^4 - di^4) / D
-    const sectionModulusM3 = (Math.PI / 32.0) * (Math.pow(D, 4) - Math.pow(di, 4)) / D;
-
-    const stressPa = maxBendingMomentNm / Math.max(1e-6, sectionModulusM3);
+    // Maximum dynamic bending stress: sigma_bend ~ 0.5 * rho * U^2 * C_L * (L / D)^2
+    const dynamicPressure = 0.5 * current.seawaterDensityKgM3 * Math.pow(U, 2);
+    const stressPa = dynamicPressure * effectiveLiftCoefficient * Math.pow(params.spanLengthMeters / D, 2) * 12.0;
     const maxBendingStressMpa = Number((stressPa / 1e6).toFixed(2));
     const stressRatioToYield = Number((maxBendingStressMpa / params.steelYieldStressMpa).toFixed(3));
 
