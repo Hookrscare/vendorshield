@@ -1,85 +1,125 @@
 /**
- * QA-191: Automated Vendor Risk Re-Assessment Scheduling Engine.
+ * vendor-risk-reassessment-scheduler.ts
+ * QA-117: Automated Vendor Risk Re-Assessment Scheduling Engine.
  * Part of VendorShield B2B Enterprise Compliance Platform.
  * 
- * Computes dynamic TPRM risk re-assessment cadences based on vendor criticality tier,
- * material threat triggers, and sub-processor expansions.
+ * Computes risk-adjusted periodic re-assessment schedules, accommodates dynamic risk triggers
+ * (e.g. security breaches, data classification escalation, SOC 2 report expiration),
+ * and generates audit-ready re-assessment milestones for continuous vendor oversight.
  */
 
-import { createHash } from "crypto";
+import crypto from "crypto";
+
+export type InherentRiskTier = 'TIER_1_CRITICAL' | 'TIER_2_HIGH' | 'TIER_3_MEDIUM' | 'TIER_4_LOW';
 
 export interface VendorRiskProfile {
   vendorId: string;
   vendorName: string;
-  criticalityTier: "TIER_1_CRITICAL" | "TIER_2_SIGNIFICANT" | "TIER_3_COMMODITY";
-  lastAssessmentDate: string; // YYYY-MM-DD
-  activeSecurityIncidentOrBreach: boolean;
-  unresolvedSoc2Exceptions: boolean;
-  newHighRiskSubprocessorsAdded: boolean;
+  inherentRiskTier: InherentRiskTier;
+  lastAssessmentDateIso: string;
+  soc2ReportExpiryIso?: string;
+  hasProductionDataAccess: boolean;
+  processesSensitivePii: boolean;
+  recentSecurityIncident: boolean;
+  openCriticalFindingCount: number;
 }
 
-export interface ReassessmentScheduleResult {
+export interface ReassessmentSchedule {
   vendorId: string;
-  nextAssessmentDueDate: string;
-  cadenceDays: number;
-  daysRemaining: number;
-  urgencyLevel: "IMMEDIATE_EXPEDITED_REVIEW" | "NORMAL_SCHEDULED_CYCLE" | "LOW_RISK_DEFERRED";
-  verificationDigest: string;
+  vendorName: string;
+  scheduledDateIso: string;
+  cycleIntervalDays: number;
+  isAccelerated: boolean;
+  accelerationReasons: string[];
+  reminderDatesIso: {
+    thirtyDayReminder: string;
+    sevenDayReminder: string;
+  };
+  auditDigest: string;
 }
 
 export class VendorRiskReassessmentScheduler {
-  public static calculateNextSchedule(
+  private static readonly BASELINE_INTERVALS_DAYS: Record<InherentRiskTier, number> = {
+    TIER_1_CRITICAL: 90,   // Quarterly
+    TIER_2_HIGH: 180,      // Semi-annually
+    TIER_3_MEDIUM: 365,    // Annually
+    TIER_4_LOW: 730,       // Biennially
+  };
+
+  /**
+   * Calculates the next re-assessment date adjusting for risk triggers and audit report expirations.
+   */
+  public static calculateSchedule(
     profile: VendorRiskProfile,
-    currentDateStr: string = "2026-09-13"
-  ): ReassessmentScheduleResult {
-    if (!profile.vendorId || !profile.vendorName || !profile.lastAssessmentDate) {
-      throw new Error("vendorId, vendorName, and lastAssessmentDate are required.");
+    referenceDateIso?: string
+  ): ReassessmentSchedule {
+    const refDate = referenceDateIso ? new Date(referenceDateIso) : new Date();
+    const lastDate = new Date(profile.lastAssessmentDateIso);
+    let intervalDays = this.BASELINE_INTERVALS_DAYS[profile.inherentRiskTier];
+    const accelerationReasons: string[] = [];
+    let isAccelerated = false;
+
+    // Trigger 1: Recent security incident forces emergency 30-day reassessment
+    if (profile.recentSecurityIncident) {
+      intervalDays = Math.min(intervalDays, 30);
+      isAccelerated = true;
+      accelerationReasons.push("Active security incident reported within trailing monitoring window.");
     }
 
-    const lastDate = new Date(profile.lastAssessmentDate).getTime();
-    const curDate = new Date(currentDateStr).getTime();
-    if (isNaN(lastDate) || isNaN(curDate)) {
-      throw new Error("Invalid date format.");
+    // Trigger 2: Unresolved critical findings accelerates interval by 50%
+    if (profile.openCriticalFindingCount > 0) {
+      intervalDays = Math.min(intervalDays, Math.max(30, Math.floor(intervalDays * 0.5)));
+      isAccelerated = true;
+      accelerationReasons.push(`Vendor has ${profile.openCriticalFindingCount} unresolved critical risk findings.`);
     }
 
-    // 1. Base Cadence by Tier
-    let baseCadenceDays = 365; // Default Tier 2
-    if (profile.criticalityTier === "TIER_1_CRITICAL") {
-      baseCadenceDays = 180;
-    } else if (profile.criticalityTier === "TIER_3_COMMODITY") {
-      baseCadenceDays = 730;
+    // Trigger 3: Production data and sensitive PII access tightens lower tiers
+    if ((profile.hasProductionDataAccess || profile.processesSensitivePii) && intervalDays > 180) {
+      intervalDays = 180;
+      isAccelerated = true;
+      accelerationReasons.push("High data classification scope requires minimum semi-annual reassessment.");
     }
 
-    // 2. Modifiers
-    if (profile.newHighRiskSubprocessorsAdded) {
-      baseCadenceDays = Math.round(baseCadenceDays * 0.5);
+    // Calculate baseline scheduled date
+    let scheduledTimestamp = lastDate.getTime() + intervalDays * 24 * 60 * 60 * 1000;
+
+    // Trigger 4: Align with SOC 2 expiration (target 30 days before expiry if earlier)
+    if (profile.soc2ReportExpiryIso) {
+      const expiryDate = new Date(profile.soc2ReportExpiryIso);
+      const preExpiryTarget = expiryDate.getTime() - 30 * 24 * 60 * 60 * 1000;
+      if (preExpiryTarget > refDate.getTime() && preExpiryTarget < scheduledTimestamp) {
+        scheduledTimestamp = preExpiryTarget;
+        isAccelerated = true;
+        accelerationReasons.push("Scheduled 30 days prior to annual SOC 2 Type II report expiration.");
+      }
     }
 
-    // 3. Emergency triggers: active breach or critical SOC 2 exception forces 30-day review
-    let effectiveCadenceDays = baseCadenceDays;
-    let urgency: ReassessmentScheduleResult["urgencyLevel"] = "NORMAL_SCHEDULED_CYCLE";
-
-    if (profile.activeSecurityIncidentOrBreach || profile.unresolvedSoc2Exceptions) {
-      effectiveCadenceDays = 30;
-      urgency = "IMMEDIATE_EXPEDITED_REVIEW";
-    } else if (profile.criticalityTier === "TIER_3_COMMODITY") {
-      urgency = "LOW_RISK_DEFERRED";
+    // Ensure scheduled date is in future relative to reference date
+    if (scheduledTimestamp <= refDate.getTime()) {
+      scheduledTimestamp = refDate.getTime() + 14 * 24 * 60 * 60 * 1000; // 14-day urgent grace window
+      isAccelerated = true;
+      accelerationReasons.push("Overdue re-assessment defaulted to 14-day remediation window.");
     }
 
-    const dueDateEpoch = lastDate + effectiveCadenceDays * 86400 * 1000;
-    const dueDateStr = new Date(dueDateEpoch).toISOString().split("T")[0];
-    const daysRemaining = Math.round((dueDateEpoch - curDate) / (86400 * 1000));
+    const scheduledDate = new Date(scheduledTimestamp);
+    const thirtyDayReminder = new Date(scheduledTimestamp - 30 * 24 * 60 * 60 * 1000);
+    const sevenDayReminder = new Date(scheduledTimestamp - 7 * 24 * 60 * 60 * 1000);
 
-    const raw = `${profile.vendorId}:${dueDateStr}:${effectiveCadenceDays}:${urgency}`;
-    const digest = createHash("sha256").update(raw).digest("hex");
+    const auditPayload = `${profile.vendorId}:${profile.inherentRiskTier}:${scheduledDate.toISOString()}:${isAccelerated}`;
+    const auditDigest = crypto.createHash("sha256").update(auditPayload).digest("hex");
 
     return {
       vendorId: profile.vendorId,
-      nextAssessmentDueDate: dueDateStr,
-      cadenceDays: effectiveCadenceDays,
-      daysRemaining,
-      urgencyLevel: urgency,
-      verificationDigest: digest
+      vendorName: profile.vendorName,
+      scheduledDateIso: scheduledDate.toISOString(),
+      cycleIntervalDays: intervalDays,
+      isAccelerated,
+      accelerationReasons,
+      reminderDatesIso: {
+        thirtyDayReminder: thirtyDayReminder.toISOString(),
+        sevenDayReminder: sevenDayReminder.toISOString(),
+      },
+      auditDigest,
     };
   }
 }
