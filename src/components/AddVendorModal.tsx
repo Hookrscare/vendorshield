@@ -1,8 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { Sparkles, Plus, Check } from "lucide-react";
-import { Category, DPAStatus, RiskLevel, SecurityCertification, SubProcessorVendor } from "@/lib/types";
+import { Sparkles, Plus } from "lucide-react";
+import {
+  Category,
+  DPAStatus,
+  RiskLevel,
+  SecurityCertification,
+  SubProcessorVendor,
+} from "@/lib/types";
 import { DIRECTORY_VENDORS } from "@/lib/initial-data";
 import { AccessibleModal } from "@/components/ui/AccessibleModal";
 
@@ -31,31 +37,38 @@ const ALL_CERTS: SecurityCertification[] = [
   "PCI-DSS",
 ];
 
-export function AddVendorModal({ isOpen, onClose, onAdd }: AddVendorModalProps) {
-  const [activeTab, setActiveTab] = useState<"directory" | "custom">("directory");
+export function AddVendorModal({
+  isOpen,
+  onClose,
+  onAdd,
+}: AddVendorModalProps) {
+  const [activeTab, setActiveTab] = useState<"directory" | "custom">(
+    "directory",
+  );
   const [searchDir, setSearchDir] = useState<string>("");
 
   // Custom form state
   const [name, setName] = useState("");
-  const [category, setCategory] = useState<Category>("Cloud Infrastructure & Hosting");
+  const [category, setCategory] = useState<Category>(
+    "Cloud Infrastructure & Hosting",
+  );
   const [description, setDescription] = useState("");
   const [website, setWebsite] = useState("");
   const [dataProcessed, setDataProcessed] = useState("");
-  const [dataLocation, setDataLocation] = useState("United States (US-East)");
+  const [dataLocation, setDataLocation] = useState("");
   const [dpaUrl, setDpaUrl] = useState("");
-  const [dpaStatus, setDpaStatus] = useState<DPAStatus>("Signed");
+  const [dpaStatus, setDpaStatus] = useState<DPAStatus>("Under Review");
   const [riskLevel, setRiskLevel] = useState<RiskLevel>("Low");
-  const [certifications, setCertifications] = useState<SecurityCertification[]>([
-    "SOC 2 Type II",
-    "GDPR Compliant",
-  ]);
+  const [certifications, setCertifications] = useState<SecurityCertification[]>(
+    [],
+  );
   const [notes, setNotes] = useState("");
   const [isPublic, setIsPublic] = useState(true);
 
   const filteredDirectory = DIRECTORY_VENDORS.filter(
     (v) =>
       v.name.toLowerCase().includes(searchDir.toLowerCase()) ||
-      v.category.toLowerCase().includes(searchDir.toLowerCase())
+      v.category.toLowerCase().includes(searchDir.toLowerCase()),
   );
 
   const handleSelectFromDirectory = (slug: string) => {
@@ -69,14 +82,14 @@ export function AddVendorModal({ isOpen, onClose, onAdd }: AddVendorModalProps) 
       category: dirItem.category,
       website: dirItem.website,
       dataProcessed: dirItem.commonDataProcessed,
-      dataLocation: "United States (Multi-Region)",
+      dataLocation: "",
       dpaUrl: dirItem.dpaUrl,
-      dpaStatus: "Signed",
+      dpaStatus: "Under Review",
       certifications: dirItem.certifications,
       riskLevel: dirItem.riskLevel,
-      lastReviewedDate: new Date().toISOString().split("T")[0],
-      nextReviewDate: new Date(Date.now() + 365 * 86400000).toISOString().split("T")[0],
-      notes: `Imported from VendorShield Directory. DPO Contact: ${dirItem.privacyContact}`,
+      lastReviewedDate: "",
+      nextReviewDate: "",
+      notes: `Unverified directory reference; confirm agreement, location, certifications and risk. DPO Contact: ${dirItem.privacyContact}`,
       isPublic: true,
     });
     onClose();
@@ -101,8 +114,8 @@ export function AddVendorModal({ isOpen, onClose, onAdd }: AddVendorModalProps) 
       dpaStatus,
       certifications,
       riskLevel,
-      lastReviewedDate: new Date().toISOString().split("T")[0],
-      nextReviewDate: new Date(Date.now() + 365 * 86400000).toISOString().split("T")[0],
+      lastReviewedDate: "",
+      nextReviewDate: "",
       notes,
       isPublic,
     });
@@ -136,7 +149,7 @@ export function AddVendorModal({ isOpen, onClose, onAdd }: AddVendorModalProps) 
             }`}
           >
             <Sparkles className="w-3.5 h-3.5" />
-            1-Click Directory Import (30+)
+            Directory reference
           </button>
           <button
             onClick={() => setActiveTab("custom")}
@@ -147,34 +160,45 @@ export function AddVendorModal({ isOpen, onClose, onAdd }: AddVendorModalProps) 
             }`}
           >
             <Plus className="w-3.5 h-3.5" />
-            Custom Vendor Entry
+            Custom vendor
           </button>
         </div>
 
         {/* Tab 1: Directory Import */}
         {activeTab === "directory" ? (
           <div className="space-y-3">
+            <label
+              htmlFor="directory-reference-search"
+              className="block text-xs"
+            >
+              Find a directory reference
+            </label>
             <input
+              id="directory-reference-search"
               type="text"
+              aria-label="Search directory references"
               placeholder="Search pre-indexed vendors (e.g. OpenAI, Stripe, AWS, Resend)..."
               value={searchDir}
               onChange={(e) => setSearchDir(e.target.value)}
               className="w-full px-4 py-2 bg-black/40 border border-white/10 rounded-xl text-xs font-mono text-white focus:outline-none focus:border-cyan-400 placeholder-gray-500"
             />
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 max-h-[360px] overflow-y-auto pr-1">
+            <div className="directory-choices">
               {filteredDirectory.map((item) => (
-                <div
+                <button
+                  type="button"
                   key={item.slug}
                   onClick={() => handleSelectFromDirectory(item.slug)}
-                  className="p-3 bg-[#0c1322] border border-white/5 hover:border-cyan-500/50 rounded-xl cursor-pointer transition-all hover:bg-white/[0.04] group flex flex-col justify-between gap-2"
+                  className="directory-choice p-3 bg-[#0c1322] border border-white/5 hover:border-cyan-500/50 rounded-xl cursor-pointer transition-all hover:bg-white/[0.04] group flex flex-col justify-between gap-2"
                 >
                   <div className="flex items-start justify-between">
                     <div>
                       <h4 className="font-bold text-white group-hover:text-cyan-300 transition-colors text-xs font-sans">
                         {item.name}
                       </h4>
-                      <p className="text-[10px] text-gray-400 line-clamp-1">{item.description}</p>
+                      <p className="text-[10px] text-gray-400 line-clamp-1">
+                        {item.description}
+                      </p>
                     </div>
                     <span className="text-[9px] bg-cyan-500/10 text-cyan-300 px-1.5 py-0.5 rounded border border-cyan-500/20 font-mono">
                       {item.category.split(" ")[0]}
@@ -183,25 +207,32 @@ export function AddVendorModal({ isOpen, onClose, onAdd }: AddVendorModalProps) 
 
                   <div className="flex items-center justify-between pt-1.5 border-t border-white/5 text-[10px] font-mono">
                     <span className="text-emerald-400 flex items-center gap-1">
-                      <Check className="w-3 h-3" /> SOC 2 &amp; DPA
+                      Reference only · confirm details
                     </span>
                     <span className="text-cyan-400 group-hover:text-cyan-300 font-semibold">
                       + Add
                     </span>
                   </div>
-                </div>
+                </button>
               ))}
             </div>
           </div>
         ) : (
           /* Tab 2: Custom Form */
-          <form onSubmit={handleCustomSubmit} className="space-y-3.5 max-h-[420px] overflow-y-auto pr-1">
+          <form
+            onSubmit={handleCustomSubmit}
+            className="space-y-3.5 max-h-[420px] overflow-y-auto pr-1"
+          >
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="block text-[11px] font-mono font-semibold text-gray-300 mb-1">
+                <label
+                  htmlFor="AddVendorModal-field-1"
+                  className="block text-[11px] font-mono font-semibold text-gray-300 mb-1"
+                >
                   Vendor Name *
                 </label>
                 <input
+                  id="AddVendorModal-field-1"
                   type="text"
                   required
                   placeholder="e.g. Supabase, Mixpanel"
@@ -212,10 +243,14 @@ export function AddVendorModal({ isOpen, onClose, onAdd }: AddVendorModalProps) 
               </div>
 
               <div>
-                <label className="block text-[11px] font-mono font-semibold text-gray-300 mb-1">
+                <label
+                  htmlFor="AddVendorModal-field-2"
+                  className="block text-[11px] font-mono font-semibold text-gray-300 mb-1"
+                >
                   Category *
                 </label>
                 <select
+                  id="AddVendorModal-field-2"
                   value={category}
                   onChange={(e) => setCategory(e.target.value as Category)}
                   className="w-full px-3 py-1.5 bg-black/40 border border-white/10 rounded-lg text-xs text-white focus:border-cyan-400 focus:outline-none"
@@ -230,10 +265,14 @@ export function AddVendorModal({ isOpen, onClose, onAdd }: AddVendorModalProps) 
             </div>
 
             <div>
-              <label className="block text-[11px] font-mono font-semibold text-gray-300 mb-1">
+              <label
+                htmlFor="AddVendorModal-field-3"
+                className="block text-[11px] font-mono font-semibold text-gray-300 mb-1"
+              >
                 Description
               </label>
               <input
+                id="AddVendorModal-field-3"
                 type="text"
                 placeholder="Brief summary of vendor usage"
                 value={description}
@@ -244,15 +283,19 @@ export function AddVendorModal({ isOpen, onClose, onAdd }: AddVendorModalProps) 
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="block text-[11px] font-mono font-semibold text-gray-300 mb-1">
+                <label
+                  htmlFor="AddVendorModal-field-4"
+                  className="block text-[11px] font-mono font-semibold text-gray-300 mb-1"
+                >
                   DPA Status *
                 </label>
                 <select
+                  id="AddVendorModal-field-4"
                   value={dpaStatus}
                   onChange={(e) => setDpaStatus(e.target.value as DPAStatus)}
                   className="w-full px-3 py-1.5 bg-black/40 border border-white/10 rounded-lg text-xs text-white focus:border-cyan-400 focus:outline-none"
                 >
-                  <option value="Signed">Signed (Full Compliance)</option>
+                  <option value="Signed">Signed</option>
                   <option value="Under Review">Under Review</option>
                   <option value="Standard Terms">Standard Online Terms</option>
                   <option value="Missing">Missing (Action Required)</option>
@@ -260,10 +303,14 @@ export function AddVendorModal({ isOpen, onClose, onAdd }: AddVendorModalProps) 
               </div>
 
               <div>
-                <label className="block text-[11px] font-mono font-semibold text-gray-300 mb-1">
+                <label
+                  htmlFor="AddVendorModal-field-5"
+                  className="block text-[11px] font-mono font-semibold text-gray-300 mb-1"
+                >
                   Risk Level *
                 </label>
                 <select
+                  id="AddVendorModal-field-5"
                   value={riskLevel}
                   onChange={(e) => setRiskLevel(e.target.value as RiskLevel)}
                   className="w-full px-3 py-1.5 bg-black/40 border border-white/10 rounded-lg text-xs text-white focus:border-cyan-400 focus:outline-none"
@@ -275,6 +322,52 @@ export function AddVendorModal({ isOpen, onClose, onAdd }: AddVendorModalProps) 
               </div>
             </div>
 
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <label>
+                Website
+                <input
+                  type="url"
+                  value={website}
+                  onChange={(e) => setWebsite(e.target.value)}
+                  className="w-full"
+                />
+              </label>
+              <label>
+                DPA / legal URL
+                <input
+                  type="url"
+                  value={dpaUrl}
+                  onChange={(e) => setDpaUrl(e.target.value)}
+                  className="w-full"
+                />
+              </label>
+              <label>
+                Data processed
+                <input
+                  value={dataProcessed}
+                  onChange={(e) => setDataProcessed(e.target.value)}
+                  placeholder="Separate items with commas"
+                  className="w-full"
+                />
+              </label>
+              <label>
+                Hosting location
+                <input
+                  value={dataLocation}
+                  onChange={(e) => setDataLocation(e.target.value)}
+                  className="w-full"
+                />
+              </label>
+            </div>
+            <label className="block">
+              Notes
+              <textarea
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                className="w-full"
+                rows={2}
+              />
+            </label>
             <div>
               <label className="block text-[11px] font-mono font-semibold text-gray-300 mb-1">
                 Security Certifications
@@ -287,6 +380,7 @@ export function AddVendorModal({ isOpen, onClose, onAdd }: AddVendorModalProps) 
                       type="button"
                       key={cert}
                       onClick={() => toggleCert(cert)}
+                      aria-pressed={active}
                       className={`text-[10px] font-mono px-2 py-0.5 rounded border transition-all ${
                         active
                           ? "bg-cyan-500/20 border-cyan-500 text-cyan-300"
@@ -309,8 +403,12 @@ export function AddVendorModal({ isOpen, onClose, onAdd }: AddVendorModalProps) 
                 onChange={(e) => setIsPublic(e.target.checked)}
                 className="rounded border-white/10 bg-black/40 text-cyan-500 focus:ring-cyan-400 h-4 w-4"
               />
-              <label htmlFor="isPublic" className="text-xs text-gray-300 font-mono">
-                Display on public <code className="text-cyan-400">/subprocessors</code> page
+              <label
+                htmlFor="isPublic"
+                className="text-xs text-gray-300 font-mono"
+              >
+                Display on public{" "}
+                <code className="text-cyan-400">/subprocessors</code> page
               </label>
             </div>
 

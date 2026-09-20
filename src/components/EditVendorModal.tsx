@@ -2,7 +2,13 @@
 
 import { useState, useEffect } from "react";
 import { Save } from "lucide-react";
-import { Category, DPAStatus, RiskLevel, SecurityCertification, SubProcessorVendor } from "@/lib/types";
+import {
+  Category,
+  DPAStatus,
+  RiskLevel,
+  SecurityCertification,
+  SubProcessorVendor,
+} from "@/lib/types";
 import { AccessibleModal } from "@/components/ui/AccessibleModal";
 
 interface EditVendorModalProps {
@@ -40,7 +46,9 @@ export function EditVendorModal({
   onDelete,
 }: EditVendorModalProps) {
   const [name, setName] = useState("");
-  const [category, setCategory] = useState<Category>("Cloud Infrastructure & Hosting");
+  const [category, setCategory] = useState<Category>(
+    "Cloud Infrastructure & Hosting",
+  );
   const [description, setDescription] = useState("");
   const [website, setWebsite] = useState("");
   const [dataProcessed, setDataProcessed] = useState("");
@@ -48,7 +56,9 @@ export function EditVendorModal({
   const [dpaUrl, setDpaUrl] = useState("");
   const [dpaStatus, setDpaStatus] = useState<DPAStatus>("Signed");
   const [riskLevel, setRiskLevel] = useState<RiskLevel>("Low");
-  const [certifications, setCertifications] = useState<SecurityCertification[]>([]);
+  const [certifications, setCertifications] = useState<SecurityCertification[]>(
+    [],
+  );
   const [notes, setNotes] = useState("");
   const [lastReviewedDate, setLastReviewedDate] = useState("");
   const [nextReviewDate, setNextReviewDate] = useState("");
@@ -114,13 +124,20 @@ export function EditVendorModal({
       title={`Edit Sub-Processor: ${vendor.name}`}
       maxWidth="max-w-2xl"
     >
-      <form onSubmit={handleSubmit} className="space-y-3.5 max-h-[460px] overflow-y-auto pr-1">
+      <form
+        onSubmit={handleSubmit}
+        className="space-y-3.5 max-h-[460px] overflow-y-auto pr-1"
+      >
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
-            <label className="block text-[11px] font-mono font-semibold text-gray-300 mb-1">
+            <label
+              htmlFor="EditVendorModal-field-1"
+              className="block text-[11px] font-mono font-semibold text-gray-300 mb-1"
+            >
               Vendor Name
             </label>
             <input
+              id="EditVendorModal-field-1"
               type="text"
               required
               value={name}
@@ -130,10 +147,14 @@ export function EditVendorModal({
           </div>
 
           <div>
-            <label className="block text-[11px] font-mono font-semibold text-gray-300 mb-1">
+            <label
+              htmlFor="EditVendorModal-field-2"
+              className="block text-[11px] font-mono font-semibold text-gray-300 mb-1"
+            >
               Category
             </label>
             <select
+              id="EditVendorModal-field-2"
               value={category}
               onChange={(e) => setCategory(e.target.value as Category)}
               className="w-full px-3 py-1.5 bg-black/40 border border-white/10 rounded-lg text-xs text-white focus:border-cyan-400 focus:outline-none"
@@ -149,32 +170,40 @@ export function EditVendorModal({
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
-            <label className="block text-[11px] font-mono font-semibold text-gray-300 mb-1">
+            <label
+              htmlFor="EditVendorModal-field-3"
+              className="block text-[11px] font-mono font-semibold text-gray-300 mb-1"
+            >
               DPA Status
             </label>
             <select
+              id="EditVendorModal-field-3"
               value={dpaStatus}
               onChange={(e) => setDpaStatus(e.target.value as DPAStatus)}
               className={`w-full px-3 py-1.5 bg-black/40 border rounded-lg text-xs font-mono focus:outline-none ${
                 dpaStatus === "Signed"
                   ? "text-emerald-400 border-emerald-500/30"
                   : dpaStatus === "Missing"
-                  ? "text-rose-400 border-rose-500/30"
-                  : "text-amber-400 border-amber-500/30"
+                    ? "text-rose-400 border-rose-500/30"
+                    : "text-amber-400 border-amber-500/30"
               }`}
             >
-              <option value="Signed">Signed (Full Compliance)</option>
+              <option value="Signed">Signed</option>
               <option value="Under Review">Under Review</option>
               <option value="Standard Terms">Standard Online Terms</option>
-              <option value="Missing">Missing (Audit Risk)</option>
+              <option value="Missing">Missing</option>
             </select>
           </div>
 
           <div>
-            <label className="block text-[11px] font-mono font-semibold text-gray-300 mb-1">
+            <label
+              htmlFor="EditVendorModal-field-4"
+              className="block text-[11px] font-mono font-semibold text-gray-300 mb-1"
+            >
               Risk Level
             </label>
             <select
+              id="EditVendorModal-field-4"
               value={riskLevel}
               onChange={(e) => setRiskLevel(e.target.value as RiskLevel)}
               className="w-full px-3 py-1.5 bg-black/40 border border-white/10 rounded-lg text-xs text-white focus:border-cyan-400 focus:outline-none"
@@ -186,11 +215,52 @@ export function EditVendorModal({
           </div>
         </div>
 
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <label>
+            Description
+            <input
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              className="w-full"
+            />
+          </label>
+          <label>
+            Website
+            <input
+              type="url"
+              value={website}
+              onChange={(e) => setWebsite(e.target.value)}
+              className="w-full"
+            />
+          </label>
+          <label>
+            Last reviewed
+            <input
+              type="date"
+              value={lastReviewedDate}
+              onChange={(e) => setLastReviewedDate(e.target.value)}
+              className="w-full"
+            />
+          </label>
+          <label>
+            Next review
+            <input
+              type="date"
+              value={nextReviewDate}
+              onChange={(e) => setNextReviewDate(e.target.value)}
+              className="w-full"
+            />
+          </label>
+        </div>
         <div>
-          <label className="block text-[11px] font-mono font-semibold text-gray-300 mb-1">
+          <label
+            htmlFor="EditVendorModal-field-5"
+            className="block text-[11px] font-mono font-semibold text-gray-300 mb-1"
+          >
             Data Processed
           </label>
           <input
+            id="EditVendorModal-field-5"
             type="text"
             value={dataProcessed}
             onChange={(e) => setDataProcessed(e.target.value)}
@@ -200,10 +270,14 @@ export function EditVendorModal({
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
-            <label className="block text-[11px] font-mono font-semibold text-gray-300 mb-1">
+            <label
+              htmlFor="EditVendorModal-field-6"
+              className="block text-[11px] font-mono font-semibold text-gray-300 mb-1"
+            >
               Hosting Location
             </label>
             <input
+              id="EditVendorModal-field-6"
               type="text"
               value={dataLocation}
               onChange={(e) => setDataLocation(e.target.value)}
@@ -212,10 +286,14 @@ export function EditVendorModal({
           </div>
 
           <div>
-            <label className="block text-[11px] font-mono font-semibold text-gray-300 mb-1">
+            <label
+              htmlFor="EditVendorModal-field-7"
+              className="block text-[11px] font-mono font-semibold text-gray-300 mb-1"
+            >
               DPA / Legal URL
             </label>
             <input
+              id="EditVendorModal-field-7"
               type="url"
               value={dpaUrl}
               onChange={(e) => setDpaUrl(e.target.value)}
@@ -225,10 +303,14 @@ export function EditVendorModal({
         </div>
 
         <div>
-          <label className="block text-[11px] font-mono font-semibold text-gray-300 mb-1">
+          <label
+            htmlFor="EditVendorModal-field-8"
+            className="block text-[11px] font-mono font-semibold text-gray-300 mb-1"
+          >
             Auditor Notes
           </label>
           <textarea
+            id="EditVendorModal-field-8"
             rows={2}
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
@@ -249,6 +331,7 @@ export function EditVendorModal({
                   type="button"
                   key={cert}
                   onClick={() => toggleCert(cert)}
+                  aria-pressed={active}
                   className={`text-[10px] font-mono px-2 py-0.5 rounded border transition-all ${
                     active
                       ? "bg-cyan-500/20 border-cyan-500 text-cyan-300"
@@ -271,7 +354,10 @@ export function EditVendorModal({
             onChange={(e) => setIsPublic(e.target.checked)}
             className="rounded border-white/10 bg-black/40 text-cyan-500 focus:ring-cyan-400 h-4 w-4"
           />
-          <label htmlFor="editIsPublic" className="text-xs text-gray-300 font-mono">
+          <label
+            htmlFor="editIsPublic"
+            className="text-xs text-gray-300 font-mono"
+          >
             Visible on public customer-facing sub-processors page
           </label>
         </div>
@@ -280,7 +366,11 @@ export function EditVendorModal({
           <button
             type="button"
             onClick={() => {
-              if (confirm(`Are you sure you want to remove ${vendor.name} from your register?`)) {
+              if (
+                confirm(
+                  `Are you sure you want to remove ${vendor.name} from your register?`,
+                )
+              ) {
                 onDelete(vendor.id);
                 onClose();
               }

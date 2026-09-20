@@ -28,13 +28,16 @@ export function AccessibleModal({
     previousFocusRef.current = document.activeElement as HTMLElement;
 
     // Focus first interactive element within dialog
-    const focusable = dialogRef.current?.querySelectorAll<HTMLElement>(
-      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
-    );
-    const firstElement = focusable?.[0];
-    const lastElement = focusable?.[focusable.length - 1];
-
-    firstElement?.focus();
+    const getFocusable = () =>
+      Array.from(
+        dialogRef.current?.querySelectorAll<HTMLElement>(
+          'button:not(:disabled), [href], input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"])',
+        ) || [],
+      ).filter(
+        (element) =>
+          !element.hidden && element.getAttribute("aria-hidden") !== "true",
+      );
+    getFocusable()[0]?.focus();
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
@@ -42,7 +45,10 @@ export function AccessibleModal({
         onClose();
       }
 
-      if (e.key === "Tab" && focusable && focusable.length > 0) {
+      const focusable = getFocusable();
+      const firstElement = focusable[0];
+      const lastElement = focusable[focusable.length - 1];
+      if (e.key === "Tab" && focusable.length > 0) {
         if (e.shiftKey && document.activeElement === firstElement) {
           e.preventDefault();
           lastElement?.focus();
