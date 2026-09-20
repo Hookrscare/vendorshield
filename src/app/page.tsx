@@ -95,24 +95,24 @@ export default function LandingPage() {
               <Link href="/p/acme-saas" target="_blank">
                 <MagneticButton className="w-full sm:w-auto px-6 py-4 bg-[#0d1424] hover:bg-[#121c33] border border-white/10 text-gray-300 hover:text-white font-mono text-xs rounded-2xl transition-bespoke flex items-center justify-center gap-2">
                   <Eye className="w-4 h-4 text-cyan-400" />
-                  <span>See Live Public Trust Portal</span>
+                  <span>See Example Public Trust Portal</span>
                 </MagneticButton>
               </Link>
             </div>
 
-            {/* Verification Badges */}
+            {/* Product workflows, not certification claims */}
             <div className="pt-4 flex flex-wrap items-center gap-5 text-xs text-gray-400 font-mono">
               <div className="flex items-center gap-1.5">
                 <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-                <span>AICPA CC6.6 Verified</span>
+                <span>Vendor inventory</span>
               </div>
               <div className="flex items-center gap-1.5">
                 <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-                <span>GDPR Art. 28 Compliant</span>
+                <span>DPA tracking</span>
               </div>
               <div className="flex items-center gap-1.5">
                 <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-                <span>ISO 27001 Clause A.15</span>
+                <span>Public disclosures</span>
               </div>
             </div>
           </div>
@@ -122,12 +122,12 @@ export default function LandingPage() {
             <div className="tactile-surface rounded-3xl p-2 relative overflow-hidden border border-white/10">
               <div className="absolute top-4 left-4 z-20 flex items-center gap-2 px-3 py-1 bg-black/60 backdrop-blur-md rounded-full border border-white/10 text-[11px] font-mono text-cyan-300">
                 <Cpu className="w-3.5 h-3.5 text-cyan-400 animate-pulse" />
-                <span>CRYPTO TOPOLOGY // 60 FPS</span>
+                <span>ILLUSTRATIVE VENDOR NETWORK</span>
               </div>
               <ThreeTrustGraph />
               <div className="p-4 bg-[#080d1a]/90 border-t border-white/5 rounded-b-2xl flex items-center justify-between text-xs font-mono">
-                <span className="text-gray-400">STATUS: 120 NODES ATTESTED</span>
-                <span className="text-emerald-400">LATENCY: 0.8ms</span>
+                <span className="text-gray-400">DEMO VISUALIZATION</span>
+                <span className="text-emerald-400">NOT LIVE TELEMETRY</span>
               </div>
             </div>
           </div>
@@ -138,13 +138,13 @@ export default function LandingPage() {
       <section className="py-20 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto space-y-12">
         <div className="text-center space-y-3 max-w-3xl mx-auto">
           <div className="text-xs font-mono uppercase tracking-widest text-cyan-400 font-bold">
-            AUDITABLE SUB-PROCESSOR MATRIX
+            EXAMPLE SUB-PROCESSOR REGISTER
           </div>
           <h2 className="text-3xl sm:text-5xl font-display font-bold text-white tracking-tight">
             Real-Time DPA &amp; Vendor Trust Registry
           </h2>
           <p className="text-sm sm:text-base text-gray-400 font-sans">
-            Every SaaS dependency continuously verified with automated checksum hashes and auditor sign-off receipts.
+            Illustrative vendor data showing how a register can be organized. These entries are examples, not verified customer records or endorsements.
           </p>
         </div>
 
@@ -163,7 +163,7 @@ export default function LandingPage() {
             </div>
             <div className="flex items-center gap-3">
               <span className="text-xs font-mono text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-full border border-emerald-500/20">
-                ● 24 ACTIVE DPAs MONITORED
+                SAMPLE DATA
               </span>
             </div>
           </div>
@@ -197,7 +197,7 @@ export default function LandingPage() {
                     </span>
                   </td>
                   <td className="py-4 px-4 text-cyan-300">SOC 2 Type II, ISO 27001</td>
-                  <td className="py-4 px-6 text-emerald-400">Live Synced</td>
+                  <td className="py-4 px-6 text-emerald-400">Example</td>
                 </tr>
 
                 <tr className="hover:bg-white/[0.02] transition-colors">
@@ -215,7 +215,7 @@ export default function LandingPage() {
                     </span>
                   </td>
                   <td className="py-4 px-4 text-cyan-300">SOC 1/2/3, FedRAMP</td>
-                  <td className="py-4 px-6 text-emerald-400">Live Synced</td>
+                  <td className="py-4 px-6 text-emerald-400">Example</td>
                 </tr>
 
                 <tr className="hover:bg-white/[0.02] transition-colors">
@@ -233,7 +233,7 @@ export default function LandingPage() {
                     </span>
                   </td>
                   <td className="py-4 px-4 text-cyan-300">PCI-DSS Level 1, SOC 2</td>
-                  <td className="py-4 px-6 text-emerald-400">Live Synced</td>
+                  <td className="py-4 px-6 text-emerald-400">Example</td>
                 </tr>
               </tbody>
             </table>
@@ -249,9 +249,13 @@ export default function LandingPage() {
               AUDIT ECONOMICS &amp; EFFICIENCY
             </span>
             <h2 className="text-3xl sm:text-4xl font-display font-bold text-white">
-              Calculate Your Vendor Management Savings
+              Estimate Your Vendor Review Effort
             </h2>
           </div>
+
+          <p className="text-sm text-gray-400 text-center">
+            Illustrative estimate: 1.5 review hours per vendor, four reviews per year, at $150 per hour. This is not measured customer savings or a guarantee of time saved.
+          </p>
 
           <div className="tactile-surface p-8 sm:p-10 rounded-3xl grid grid-cols-1 md:grid-cols-12 gap-8 items-center">
             <div className="md:col-span-7 space-y-6">
@@ -284,13 +288,13 @@ export default function LandingPage() {
 
             <div className="md:col-span-5 p-6 bg-gradient-to-br from-cyan-950/40 via-[#0c1524] to-[#0d1b2a] rounded-2xl border border-cyan-500/30 text-center space-y-4 shadow-xl">
               <div className="text-xs font-mono text-cyan-300 uppercase tracking-wider">
-                ESTIMATED ANNUAL VALUE
+                ESTIMATED ANNUAL REVIEW COST
               </div>
               <div className="text-4xl sm:text-5xl font-mono font-extrabold text-white tracking-tight">
                 ${moneySavedYearly.toLocaleString()}
               </div>
               <div className="text-xs font-mono text-emerald-400">
-                +{hoursSavedYearly} engineering hours reclaimed
+                {hoursSavedYearly} estimated review hours per year
               </div>
               <Link href="/dashboard" className="block pt-2">
                 <button className="w-full py-3 bg-cyan-500 hover:bg-cyan-400 text-gray-950 font-mono font-bold text-xs rounded-xl transition-bespoke shadow-lg shadow-cyan-500/20">
@@ -313,7 +317,7 @@ export default function LandingPage() {
               Automate Your Vendor Risk &amp; SOC 2 Sub-Processor Register
             </h2>
             <p className="text-gray-400 text-xs sm:text-sm font-mono">
-              Never fail an audit on missing vendor DPAs again. 14-day money-back guarantee.
+              Choose a plan for organizing vendor records, DPA details, and public disclosures.
             </p>
           </div>
 
@@ -422,79 +426,6 @@ export default function LandingPage() {
               >
                 Subscribe ($149/mo)
               </CheckoutButton>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Social Proof & Customer Reviews Grid */}
-      <section className="py-20 px-4 sm:px-6 lg:px-8 border-t border-white/5 bg-[#060a14]">
-        <div className="max-w-6xl mx-auto space-y-12">
-          <div className="text-center space-y-3">
-            <span className="text-xs font-mono text-cyan-400 uppercase tracking-wider font-bold">
-              TRUSTED BY FAST-GROWING TECH TEAMS
-            </span>
-            <h2 className="text-3xl sm:text-4xl font-display font-extrabold text-white">
-              Why Founders &amp; CISOs Choose VendorShield
-            </h2>
-            <p className="text-xs sm:text-sm font-mono text-gray-400">
-              Real feedback from companies undergoing SOC 2 Type II and ISO 27001 audits.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="tactile-surface p-6 rounded-2xl border border-white/10 space-y-4">
-              <div className="flex items-center gap-1 text-amber-400 text-sm">
-                ★★★★★
-              </div>
-              <p className="text-xs text-gray-300 leading-relaxed font-sans">
-                &ldquo;Our auditor literally asked for our sub-processor inventory during a live call. I opened VendorShield, hit Export Auditor PDF, and sent it in 30 seconds. Auditor said it was the cleanest report they had seen.&rdquo;
-              </p>
-              <div className="pt-2 border-t border-white/5 flex items-center gap-3">
-                <div className="w-8 h-8 rounded-full bg-cyan-500/20 text-cyan-300 font-bold flex items-center justify-center text-xs">
-                  JD
-                </div>
-                <div>
-                  <div className="text-xs font-bold text-white font-sans">Jason Douglas</div>
-                  <div className="text-[10px] text-gray-500 font-mono">CTO, HyperMetrics (Series A)</div>
-                </div>
-              </div>
-            </div>
-
-            <div className="tactile-surface p-6 rounded-2xl border border-white/10 space-y-4">
-              <div className="flex items-center gap-1 text-amber-400 text-sm">
-                ★★★★★
-              </div>
-              <p className="text-xs text-gray-300 leading-relaxed font-sans">
-                &ldquo;The embed widget saved us weeks of engineering time. We just added the iframe to our /subprocessors page, and now whenever our engineers integrate a new AI API, it updates automatically.&rdquo;
-              </p>
-              <div className="pt-2 border-t border-white/5 flex items-center gap-3">
-                <div className="w-8 h-8 rounded-full bg-indigo-500/20 text-indigo-300 font-bold flex items-center justify-center text-xs">
-                  EL
-                </div>
-                <div>
-                  <div className="text-xs font-bold text-white font-sans">Elena Lin</div>
-                  <div className="text-[10px] text-gray-500 font-mono">VP of Engineering, VaultAI</div>
-                </div>
-              </div>
-            </div>
-
-            <div className="tactile-surface p-6 rounded-2xl border border-white/10 space-y-4">
-              <div className="flex items-center gap-1 text-amber-400 text-sm">
-                ★★★★★
-              </div>
-              <p className="text-xs text-gray-300 leading-relaxed font-sans">
-                &ldquo;Before VendorShield, we were tracking DPAs across 40 SaaS vendors in a messy Notion table. VendorShield flagged 3 missing signatures that would have blocked our SOC 2 certification.&rdquo;
-              </p>
-              <div className="pt-2 border-t border-white/5 flex items-center gap-3">
-                <div className="w-8 h-8 rounded-full bg-emerald-500/20 text-emerald-300 font-bold flex items-center justify-center text-xs">
-                  MK
-                </div>
-                <div>
-                  <div className="text-xs font-bold text-white font-sans">Marcus Keller</div>
-                  <div className="text-[10px] text-gray-500 font-mono">Head of Security, DataStream</div>
-                </div>
-              </div>
             </div>
           </div>
         </div>

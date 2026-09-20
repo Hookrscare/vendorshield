@@ -263,7 +263,7 @@ export function ThreeTrustGraph() {
             />
           ))}
           <div className="absolute inset-x-0 bottom-8 text-center text-[11px] font-mono uppercase tracking-[0.28em] text-cyan-200/70">
-            Verified trust network
+            Illustrative vendor network
           </div>
         </div>
       )}

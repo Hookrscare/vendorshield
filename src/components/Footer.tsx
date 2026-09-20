@@ -194,7 +194,7 @@ export function Footer() {
           <p>© 2026 SaaS Venture Suite. All rights reserved.</p>
           <div className="flex items-center gap-6">
             <span className="flex items-center gap-1 text-gray-500">
-              <Lock className="w-3.5 h-3.5" /> SOC 2 CC6.6 &amp; GDPR Compliant
+              <Lock className="w-3.5 h-3.5" /> Vendor records &amp; public disclosures
             </span>
             <Link href="/privacy" className="text-gray-500 hover:text-white transition-colors">
               Privacy Policy
