@@ -99,7 +99,7 @@ export function mapVendorRowToSubProcessorVendor(row: VendorRow): SubProcessorVe
     website: row.website || "",
     logoUrl: row.logo_url || undefined,
     dataProcessed: Array.isArray(row.data_processed) ? row.data_processed : [],
-    dataLocation: row.data_location || "United States",
+    dataLocation: row.data_location || "",
     dpaUrl: row.dpa_url || "",
     dpaStatus: (row.dpa_status as DPAStatus) || "Missing",
     certifications: (Array.isArray(row.certifications)
@@ -285,16 +285,13 @@ export const InsForgeRepository = {
       website: input.website?.trim() || "",
       logo_url: input.logoUrl || null,
       data_processed: dataProcessed,
-      data_location: input.dataLocation || "United States",
+      data_location: input.dataLocation || "",
       dpa_url: input.dpaUrl?.trim() || "",
       dpa_status: input.dpaStatus || "Missing",
       certifications: Array.isArray(input.certifications) ? input.certifications : [],
       risk_level: input.riskLevel || "Low",
-      last_reviewed_date:
-        input.lastReviewedDate || new Date().toISOString().split("T")[0],
-      next_review_date:
-        input.nextReviewDate ||
-        new Date(Date.now() + 365 * 86400000).toISOString().split("T")[0],
+      last_reviewed_date: input.lastReviewedDate || null,
+      next_review_date: input.nextReviewDate || null,
       notes: input.notes?.trim() || "",
       is_public: input.isPublic !== undefined ? input.isPublic : true,
       created_by: context.user.id,
@@ -347,10 +344,10 @@ export const InsForgeRepository = {
     }
     if (input.riskLevel !== undefined) updatePayload.risk_level = input.riskLevel;
     if (input.lastReviewedDate !== undefined) {
-      updatePayload.last_reviewed_date = input.lastReviewedDate;
+      updatePayload.last_reviewed_date = input.lastReviewedDate || null;
     }
     if (input.nextReviewDate !== undefined) {
-      updatePayload.next_review_date = input.nextReviewDate;
+      updatePayload.next_review_date = input.nextReviewDate || null;
     }
     if (input.notes !== undefined) updatePayload.notes = input.notes.trim();
     if (input.isPublic !== undefined) updatePayload.is_public = input.isPublic;

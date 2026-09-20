@@ -30,10 +30,12 @@ The embed hardcoded “Signed DPA” for every record and claimed a verified reg
 - Real PDF (10,189 bytes), CSV (360 bytes) and JSON (1,242 bytes) downloads. JSON contained the edited data, Missing DPA state and saved reviewer.
 - A deliberately blocked vendor request showed the recoverable error state; unblocking and Try again restored the record.
 - DPA preview showed Missing from the saved record and respected explicit light mode.
-- Existing API tests cover tenant/role behavior; no backend authorization, schema or payment code changed.
+- Existing API tests cover tenant/role behavior; no backend authorization, schema or payment code changed. A minimal repository mapping fix preserves unknown location and review dates rather than supplying invented defaults; empty dates serialize as null in create/update.
 
 ## Design review
 
 The high-impact fixes are the workspace composition, record legibility and truthfulness of status displays. Navigation now identifies the current task; operational pages use a common type hierarchy, fine rules, sage actions and warm dark surfaces. Mobile records expose labeled fields instead of requiring a seven-column sideways table. Remaining compact tables use their own mobile roster layout. Motion is limited to small action feedback; reduced-motion removes transitions. Depth distinguishes actionable file choices and modal layers without adding an ornamental 3D object to the register.
 
 Production deployment and final synthetic-fixture cleanup are recorded in the completion report.
+
+Follow-up production testing revealed the legacy server also supplied default locations/review dates. The mapper and write payloads were corrected; 27 focused repository/migration/authorization checks passed, including three new regressions.
