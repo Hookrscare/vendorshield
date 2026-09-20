@@ -3,7 +3,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 export function CapabilityNotice() {
   const path = usePathname() || "/";
-  if (path.startsWith("/embed")) return null;
+  if (path.startsWith("/embed") || path.startsWith("/dashboard")) return null;
   const editorial =
     path === "/" || path.startsWith("/directory") || path === "/capabilities";
   return (

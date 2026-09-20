@@ -4,7 +4,7 @@ import { usePathname } from "next/navigation";
 import { ArrowUpRight } from "lucide-react";
 export function Footer() {
   const path = usePathname() || "/";
-  if (path.startsWith("/embed")) return null;
+  if (path.startsWith("/embed") || path.startsWith("/dashboard")) return null;
   const editorial =
     path === "/" || path.startsWith("/directory") || path === "/capabilities";
   return (

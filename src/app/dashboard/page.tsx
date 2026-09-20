@@ -7,18 +7,7 @@ import { VendorTable } from "@/components/VendorTable";
 import { AddVendorModal } from "@/components/AddVendorModal";
 import { EditVendorModal } from "@/components/EditVendorModal";
 import Link from "next/link";
-import {
-  ShieldCheck,
-  Plus,
-  FileText,
-  Code2,
-  ExternalLink,
-  History,
-  Building,
-  CheckCircle2,
-  Lock,
-  Users,
-} from "lucide-react";
+import { Plus, ArrowUpRight } from "lucide-react";
 
 export default function DashboardPage() {
   const [isDemo, setIsDemo] = useState(true);
@@ -31,12 +20,20 @@ export default function DashboardPage() {
   } | null>(null);
   const [logs, setLogs] = useState<AuditLog[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<"register" | "logs" | "settings">("register");
+  const [loadError, setLoadError] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [activeTab, setActiveTab] = useState<"register" | "logs" | "settings">(
+    "register",
+  );
 
   // Modal states
   const [isAddOpen, setIsAddOpen] = useState(false);
-  const [editingVendor, setEditingVendor] = useState<SubProcessorVendor | null>(null);
-  const [saveSuccessNotice, setSaveSuccessNotice] = useState<string | null>(null);
+  const [editingVendor, setEditingVendor] = useState<SubProcessorVendor | null>(
+    null,
+  );
+  const [saveSuccessNotice, setSaveSuccessNotice] = useState<string | null>(
+    null,
+  );
 
   // Settings form state
   const [companyName, setCompanyName] = useState("");
@@ -45,18 +42,23 @@ export default function DashboardPage() {
   const [website, setWebsite] = useState("");
 
   const isReadOnly = isDemo || userRole === "viewer";
-  const canEdit = !isDemo && (userRole === "owner" || userRole === "admin" || userRole === "member");
+  const canEdit =
+    !isDemo &&
+    (userRole === "owner" || userRole === "admin" || userRole === "member");
   const canAdmin = !isDemo && (userRole === "owner" || userRole === "admin");
 
   const fetchData = async () => {
     try {
       setLoading(true);
+      setLoadError(false);
       const [vRes, cRes] = await Promise.all([
         fetch("/api/vendors"),
         fetch("/api/company"),
       ]);
       const vData = await vRes.json();
       const cData = await cRes.json();
+      if (!vRes.ok || !cRes.ok || !vData.success || !cData.success)
+        throw new Error("Workspace unavailable");
 
       if (vData.success) {
         setVendors(vData.data);
@@ -76,6 +78,7 @@ export default function DashboardPage() {
       }
     } catch (err) {
       console.error("Failed to load dashboard data", err);
+      setLoadError(true);
     } finally {
       setLoading(false);
     }
@@ -85,7 +88,9 @@ export default function DashboardPage() {
     fetchData();
   }, []);
 
-  const handleAddVendor = async (newVendor: Omit<SubProcessorVendor, "id" | "addedAt">) => {
+  const handleAddVendor = async (
+    newVendor: Omit<SubProcessorVendor, "id" | "addedAt">,
+  ) => {
     try {
       const res = await fetch("/api/vendors", {
         method: "POST",
@@ -102,10 +107,14 @@ export default function DashboardPage() {
       }
     } catch (err) {
       console.error("Error adding vendor", err);
+      showNotice("Could not save changes. Please try again.");
     }
   };
 
-  const handleUpdateVendor = async (id: string, updated: Partial<SubProcessorVendor>) => {
+  const handleUpdateVendor = async (
+    id: string,
+    updated: Partial<SubProcessorVendor>,
+  ) => {
     try {
       const res = await fetch(`/api/vendors/${id}`, {
         method: "PUT",
@@ -122,6 +131,7 @@ export default function DashboardPage() {
       }
     } catch (err) {
       console.error("Error updating vendor", err);
+      showNotice("Could not save changes. Please try again.");
     }
   };
 
@@ -138,11 +148,13 @@ export default function DashboardPage() {
       }
     } catch (err) {
       console.error("Error deleting vendor", err);
+      showNotice("Could not save changes. Please try again.");
     }
   };
 
   const handleSaveCompanySettings = async (e: React.FormEvent) => {
     e.preventDefault();
+    setSaving(true);
     try {
       const res = await fetch("/api/company", {
         method: "PUT",
@@ -164,6 +176,9 @@ export default function DashboardPage() {
       }
     } catch (err) {
       console.error("Error saving settings", err);
+      showNotice("Could not save changes. Please try again.");
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -173,309 +188,235 @@ export default function DashboardPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-950 text-gray-100 py-8 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-7xl mx-auto space-y-8">
-        {/* Success toast notification */}
-        {saveSuccessNotice && (
-          <div className="fixed bottom-6 right-6 z-50 bg-emerald-950 border border-emerald-500/50 text-emerald-200 px-4 py-3 rounded-xl shadow-2xl flex items-center gap-2.5 text-sm animate-in slide-in-from-bottom-4">
-            <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
-            <span>{saveSuccessNotice}</span>
-          </div>
-        )}
-
-        {/* Dashboard Top Header */}
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-6 border-b border-gray-800">
-          <div>
-            <div className="flex items-center gap-2 text-xs font-semibold text-blue-400 uppercase tracking-wider mb-1">
-              <Building className="w-3.5 h-3.5" />
-              <span>{company?.name || "Acme SaaS Inc."} Sub-Processor Register</span>
-              {entitlements?.isPaid ? (
-                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
-                  <CheckCircle2 className="w-3 h-3" />
-                  {entitlements.planName}
-                </span>
-              ) : (
-                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-cyan-500/10 text-cyan-400 border border-cyan-500/30">
-                  {isDemo ? "Sample Workspace" : "Community Tier"}
-                </span>
-              )}
-            </div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
-              Vendor Risk &amp; SOC 2 Compliance Hub
-            </h1>
-            <p className="text-sm text-gray-400 mt-1">
-              Live inventory of 3rd-party SaaS vendors, DPA agreements, and public disclosure sync.
-            </p>
-          </div>
-
-          {/* Quick Action Navigation */}
-          <div className="flex flex-wrap items-center gap-2.5">
-            <button
-              onClick={() => setIsAddOpen(true)}
-              disabled={isReadOnly}
-              title={
-                isDemo
-                  ? "Editing is disabled in the public demo"
-                  : userRole === "viewer"
-                  ? "Viewer role cannot add vendors"
-                  : "Add a new sub-processor"
-              }
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs sm:text-sm rounded-xl shadow-lg shadow-blue-600/30 transition-all flex items-center gap-1.5 hover:scale-[1.02] disabled:bg-gray-800 disabled:text-gray-500 disabled:shadow-none disabled:hover:scale-100 disabled:cursor-not-allowed"
-            >
-              <Plus className="w-4 h-4" />
-              {isDemo
-                ? "Read-Only Demo"
-                : userRole === "viewer"
-                ? "Viewer Access"
-                : "Add Sub-Processor"}
-            </button>
-
-            <Link
-              href="/dashboard/audit-export"
-              className="px-3.5 py-2 bg-gray-900 hover:bg-gray-800 border border-gray-800 text-gray-200 hover:text-white font-semibold text-xs sm:text-sm rounded-xl transition-colors flex items-center gap-1.5"
-            >
-              <FileText className="w-4 h-4 text-emerald-400" />
-              Auditor Export
-            </Link>
-
-            <Link
-              href="/dashboard/embed-code"
-              className="px-3.5 py-2 bg-gray-900 hover:bg-gray-800 border border-gray-800 text-gray-200 hover:text-white font-semibold text-xs sm:text-sm rounded-xl transition-colors flex items-center gap-1.5"
-            >
-              <Code2 className="w-4 h-4 text-purple-400" />
-              Embed Widget
-            </Link>
-
-            <Link
-              href="/dashboard/team"
-              className="px-3.5 py-2 bg-gray-900 hover:bg-gray-800 border border-gray-800 text-gray-200 hover:text-white font-semibold text-xs sm:text-sm rounded-xl transition-colors flex items-center gap-1.5"
-            >
-              <Users className="w-4 h-4 text-cyan-400" />
-              Team
-            </Link>
-
-            <Link
-              href={`/p/${company?.slug || "acme-saas"}`}
-              target="_blank"
-              className="px-3.5 py-2 bg-gray-900 hover:bg-gray-800 border border-gray-800 text-gray-400 hover:text-white text-xs sm:text-sm rounded-xl transition-colors flex items-center gap-1.5"
-            >
-              <span>Public Page</span>
-              <ExternalLink className="w-3.5 h-3.5" />
-            </Link>
-          </div>
+    <div className="workspace-page">
+      {saveSuccessNotice && (
+        <div className="workspace-toast" role="status">
+          {saveSuccessNotice}
         </div>
-
-        {/* Status / Workspace Banner */}
-        {isDemo ? (
-          <div
-            role="status"
-            className="rounded-2xl border border-blue-500/30 bg-blue-500/10 px-5 py-4 text-sm text-blue-100"
-          >
-            <strong>Public product demo:</strong> all company names, contacts, vendors,
-            risk dates, and audit records shown here are sample data. Editing is disabled
-            and no customer information is exposed.
-          </div>
-        ) : userRole === "viewer" ? (
-          <div
-            role="status"
-            className="rounded-2xl border border-amber-500/30 bg-amber-500/10 px-5 py-4 text-sm text-amber-100 flex items-center gap-2"
-          >
-            <Lock className="w-4 h-4 text-amber-400 shrink-0" />
-            <span>
-              <strong>Viewer Access:</strong> You have read-only access to this organization&apos;s
-              sub-processor register. Contact an organization admin to modify entries.
-            </span>
-          </div>
-        ) : (
-          <div
-            role="status"
-            className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-5 py-4 text-sm text-emerald-100 flex items-center gap-2"
-          >
-            <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-            <span>
-              <strong>Authenticated Workspace ({userRole}):</strong> Live InsForge persistence and
-              immutable SOC 2 audit trail active.
-            </span>
-          </div>
-        )}
-
-        {/* Stats Row */}
-        <VendorStats vendors={vendors} />
-
-        {/* Navigation Tabs */}
-        <div className="flex border-b border-gray-800 gap-6 text-sm font-semibold">
-          <button
-            onClick={() => setActiveTab("register")}
-            className={`pb-3.5 border-b-2 flex items-center gap-2 transition-colors ${
-              activeTab === "register"
-                ? "border-blue-500 text-blue-400"
-                : "border-transparent text-gray-400 hover:text-gray-200"
-            }`}
-          >
-            <ShieldCheck className="w-4 h-4" />
-            Active Register ({vendors.length})
-          </button>
-          <button
-            onClick={() => setActiveTab("logs")}
-            className={`pb-3.5 border-b-2 flex items-center gap-2 transition-colors ${
-              activeTab === "logs"
-                ? "border-blue-500 text-blue-400"
-                : "border-transparent text-gray-400 hover:text-gray-200"
-            }`}
-          >
-            <History className="w-4 h-4" />
-            SOC 2 Audit Trail ({logs.length})
-          </button>
-          <button
-            onClick={() => setActiveTab("settings")}
-            className={`pb-3.5 border-b-2 flex items-center gap-2 transition-colors ${
-              activeTab === "settings"
-                ? "border-blue-500 text-blue-400"
-                : "border-transparent text-gray-400 hover:text-gray-200"
-            }`}
-          >
-            <Building className="w-4 h-4" />
-            Company &amp; Privacy Settings
+      )}
+      <header className="workspace-page-heading">
+        <div>
+          <p className="workspace-caption">
+            {loading
+              ? "Opening workspace"
+              : company?.name || "Your organization"}{" "}
+            {!loading && <>/ {isDemo ? "Sample workspace" : userRole}</>}
+          </p>
+          <h1>
+            Your vendor <em>register.</em>
+          </h1>
+          <p>Keep the record. Review the details. Share what matters.</p>
+        </div>
+        <button
+          className="ws-button primary"
+          onClick={() => setIsAddOpen(true)}
+          disabled={isReadOnly || loading}
+          title={
+            isReadOnly
+              ? "Editing requires a member, admin, or owner account"
+              : undefined
+          }
+        >
+          <Plus size={17} /> Add vendor
+        </button>
+      </header>
+      {loading ? (
+        <div className="workspace-loading" role="status">
+          <span>Loading your records…</span>
+          <div />
+          <div />
+          <div />
+        </div>
+      ) : loadError ? (
+        <div className="workspace-empty" role="alert">
+          <h2>Your workspace couldn’t load.</h2>
+          <p>
+            Check your connection and try again. Your records have not changed.
+          </p>
+          <button className="ws-button" onClick={fetchData}>
+            Try again
           </button>
         </div>
-
-        {/* Tab 1: Active Register Table */}
-        {activeTab === "register" && (
-          <div className="space-y-6">
+      ) : (
+        <>
+          <div className="workspace-status" role="status">
+            <span className="status-dot" />
+            {isDemo ? (
+              <span>
+                <strong>Sample workspace.</strong> Fictional records for
+                exploring the product. Editing is disabled.{" "}
+                <Link href="/login">Sign in ↗</Link>
+              </span>
+            ) : (
+              <span>
+                <strong>
+                  {userRole === "viewer"
+                    ? "Read-only access."
+                    : "Workspace connected."}
+                </strong>{" "}
+                {userRole === "viewer"
+                  ? "Contact an admin to change records."
+                  : "Changes are saved to your organization."}{" "}
+                Records and certification labels are user-maintained.
+              </span>
+            )}
+          </div>
+          <VendorStats vendors={vendors} />
+          <div className="workspace-tabs" aria-label="Register sections">
+            {(
+              [
+                ["register", "Vendor records"],
+                ["logs", "Activity"],
+                ["settings", "Settings & plan"],
+              ] as const
+            ).map(([key, label]) => (
+              <button
+                key={key}
+                aria-pressed={activeTab === key}
+                onClick={() => setActiveTab(key)}
+              >
+                {label}
+                {key === "register" && <span>{vendors.length}</span>}
+              </button>
+            ))}
+          </div>
+          {activeTab === "register" && (
             <VendorTable
               vendors={vendors}
               onEditVendor={(v) => (canEdit ? setEditingVendor(v) : null)}
               onAddClick={() => (canEdit ? setIsAddOpen(true) : null)}
               readOnly={isReadOnly}
             />
-          </div>
-        )}
-
-        {/* Tab 2: Audit Logs */}
-        {activeTab === "logs" && (
-          <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6 space-y-4">
-            <div>
-              <h3 className="text-base font-bold text-white flex items-center gap-2">
-                <History className="w-5 h-5 text-blue-400" />
-                Auditable Event Trail
-              </h3>
-              <p className="text-xs text-gray-400 mt-0.5">
-                Timestamped evidence log for SOC 2 Type II and ISO 27001 auditor verification.
-              </p>
-            </div>
-
-            <div className="divide-y divide-gray-800 max-h-[500px] overflow-y-auto">
-              {logs.map((log) => (
-                <div key={log.id} className="py-3 flex items-start justify-between text-xs gap-4">
-                  <div className="space-y-0.5">
-                    <div className="flex items-center gap-2">
-                      <span className="font-bold text-white">{log.vendorName}</span>
-                      <span
-                        className={`px-1.5 py-0.5 rounded text-[10px] font-mono ${
-                          log.action === "ADDED"
-                            ? "bg-blue-500/20 text-blue-300"
-                            : log.action === "DELETED"
-                            ? "bg-rose-500/20 text-rose-300"
-                            : "bg-amber-500/20 text-amber-300"
-                        }`}
-                      >
-                        {log.action}
-                      </span>
-                    </div>
-                    <p className="text-gray-400">{log.details}</p>
+          )}
+          {activeTab === "logs" && (
+            <section className="workspace-section">
+              <div className="section-intro">
+                <span className="workspace-caption">02 / Record history</span>
+                <h2>Workspace activity</h2>
+                <p>Recorded changes to your vendor register.</p>
+              </div>
+              <div className="activity-list">
+                {logs.length ? (
+                  logs.map((log) => (
+                    <article key={log.id}>
+                      <span className="record-action">{log.action}</span>
+                      <div>
+                        <h3>{log.vendorName}</h3>
+                        <p>{log.details}</p>
+                        <small>{log.actor}</small>
+                      </div>
+                      <time dateTime={log.timestamp}>
+                        {new Date(log.timestamp).toLocaleDateString()}
+                      </time>
+                    </article>
+                  ))
+                ) : (
+                  <div className="workspace-empty">
+                    <h3>No activity yet.</h3>
+                    <p>Changes to your vendor records will appear here.</p>
                   </div>
-                  <div className="text-right shrink-0 text-gray-500 font-mono text-[11px]">
-                    <div>{new Date(log.timestamp).toLocaleDateString()}</div>
-                    <div>{log.actor}</div>
-                  </div>
+                )}
+              </div>
+            </section>
+          )}
+          {activeTab === "settings" && (
+            <section className="workspace-section settings-layout">
+              <div className="section-intro">
+                <span className="workspace-caption">03 / Organization</span>
+                <h2>Company & privacy</h2>
+                <p>
+                  These details appear on your public disclosure and record
+                  exports.
+                </p>
+                <div className="workspace-plan">
+                  <span className="workspace-caption">Current plan</span>
+                  <h3>
+                    {isDemo
+                      ? "Sample workspace"
+                      : entitlements?.planName || "Community"}
+                  </h3>
+                  <p>
+                    {entitlements?.isPaid
+                      ? "Your account has an active paid entitlement."
+                      : "Paid upgrades are currently unavailable."}
+                  </p>
+                  <Link href="/capabilities">
+                    View current capabilities <ArrowUpRight size={14} />
+                  </Link>
                 </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Tab 3: Settings */}
-        {activeTab === "settings" && (
-          <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6 max-w-2xl space-y-6">
-            <div>
-              <h3 className="text-base font-bold text-white">Company Compliance Configuration</h3>
-              <p className="text-xs text-gray-400 mt-0.5">
-                These details are embedded into your public `/subprocessors` portal and audit exports.
-              </p>
-            </div>
-
-            <form onSubmit={handleSaveCompanySettings} className="space-y-4">
-              <div>
-                <label className="block text-xs font-semibold text-gray-300 mb-1.5">
-                  Legal Entity / Company Name
+              </div>
+              <form
+                onSubmit={handleSaveCompanySettings}
+                className="workspace-form"
+              >
+                <label>
+                  Company name
+                  <input
+                    type="text"
+                    required
+                    value={companyName}
+                    disabled={!canAdmin}
+                    onChange={(e) => setCompanyName(e.target.value)}
+                  />
                 </label>
-                <input
-                  type="text"
-                  required
-                  value={companyName}
-                  disabled={!canAdmin}
-                  onChange={(e) => setCompanyName(e.target.value)}
-                  className="w-full px-3.5 py-2 bg-gray-950 border border-gray-800 rounded-lg text-sm text-white focus:border-blue-500 focus:outline-none disabled:text-gray-500 disabled:bg-gray-900"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-gray-300 mb-1.5">Website</label>
-                <input
-                  type="url"
-                  required
-                  value={website}
-                  disabled={!canAdmin}
-                  onChange={(e) => setWebsite(e.target.value)}
-                  className="w-full px-3.5 py-2 bg-gray-950 border border-gray-800 rounded-lg text-sm text-white focus:border-blue-500 focus:outline-none disabled:text-gray-500 disabled:bg-gray-900"
-                />
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold text-gray-300 mb-1.5">
-                    Data Protection Officer / Security Lead
-                  </label>
+                <label>
+                  Website
+                  <input
+                    type="url"
+                    required
+                    value={website}
+                    disabled={!canAdmin}
+                    onChange={(e) => setWebsite(e.target.value)}
+                  />
+                </label>
+                <label>
+                  Data protection contact
                   <input
                     type="text"
                     required
                     value={dpoName}
                     disabled={!canAdmin}
                     onChange={(e) => setDpoName(e.target.value)}
-                    className="w-full px-3.5 py-2 bg-gray-950 border border-gray-800 rounded-lg text-sm text-white focus:border-blue-500 focus:outline-none disabled:text-gray-500 disabled:bg-gray-900"
                   />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-gray-300 mb-1.5">
-                    Public Privacy Email Contact
-                  </label>
+                </label>
+                <label>
+                  Public privacy email
                   <input
                     type="email"
                     required
                     value={privacyEmail}
                     disabled={!canAdmin}
                     onChange={(e) => setPrivacyEmail(e.target.value)}
-                    className="w-full px-3.5 py-2 bg-gray-950 border border-gray-800 rounded-lg text-sm text-white focus:border-blue-500 focus:outline-none disabled:text-gray-500 disabled:bg-gray-900"
                   />
+                </label>
+                <div className="form-actions">
+                  <span>
+                    {!canAdmin
+                      ? "Only owners and admins can change settings."
+                      : "Visible on your public disclosure."}
+                  </span>
+                  <button
+                    type="submit"
+                    className="ws-button primary"
+                    disabled={!canAdmin || saving}
+                  >
+                    {saving ? "Saving…" : "Save settings"}
+                  </button>
                 </div>
-              </div>
-
-              <div className="pt-4 border-t border-gray-800 flex justify-end">
-                <button
-                  type="submit"
-                  disabled={!canAdmin}
-                  className="px-5 py-2 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-500 rounded-lg shadow-md shadow-blue-600/20 transition-all disabled:bg-gray-800 disabled:text-gray-500 disabled:shadow-none disabled:cursor-not-allowed"
-                >
-                  {isDemo ? "Sample Settings" : !canAdmin ? "Admin Access Required" : "Save Settings"}
-                </button>
-              </div>
-            </form>
-          </div>
-        )}
-      </div>
-
-      {/* Modals */}
+              </form>
+            </section>
+          )}
+          <footer className="workspace-page-footer">
+            <span>
+              {vendors.length} vendor records /{" "}
+              {isDemo ? "Sample data" : "Your organization"}
+            </span>
+            <Link href={`/p/${company?.slug || "acme-saas"}`} target="_blank">
+              Public disclosure <ArrowUpRight size={15} />
+            </Link>
+          </footer>
+        </>
+      )}
       {canEdit && (
         <>
           <AddVendorModal
@@ -483,7 +424,6 @@ export default function DashboardPage() {
             onClose={() => setIsAddOpen(false)}
             onAdd={handleAddVendor}
           />
-
           <EditVendorModal
             vendor={editingVendor}
             isOpen={!!editingVendor}

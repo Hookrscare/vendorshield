@@ -7,7 +7,7 @@ import { ArrowUpRight, Menu, X } from "lucide-react";
 export function Navbar() {
   const pathname = usePathname() || "/";
   const [menuPath, setMenuPath] = useState<string | null>(null);
-  if (pathname.startsWith("/embed")) return null;
+  if (pathname.startsWith("/embed") || pathname.startsWith("/dashboard")) return null;
   const isSnap = pathname.startsWith("/snapinspect");
   const isDispel = pathname.startsWith("/dispel");
   const editorial =
