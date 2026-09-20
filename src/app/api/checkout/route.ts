@@ -40,6 +40,10 @@ export async function POST(request: NextRequest) {
   try {
     const { planId, customerEmail, metadata } = await request.json();
 
+    if (typeof planId === "string" && (planId.startsWith("dispel-") || planId.startsWith("snapinspect-") || planId === "vendorshield-pso-claim")) {
+      return NextResponse.json({ success: false, error: "This product is an unfinished prototype and is not available for purchase." }, { status: 503 });
+    }
+
     const tier = PRICING_TIERS[planId as keyof typeof PRICING_TIERS];
     if (!tier) {
       return NextResponse.json(

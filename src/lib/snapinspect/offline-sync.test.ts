@@ -31,7 +31,7 @@ describe("SNAP-01: Offline Sync & PWA State Manager", () => {
     expect(state.pendingSyncCount).toBe(1);
   });
 
-  it("flushes pending queue on sync reconnection", () => {
+  it("preserves unsynced records on reconnection without claiming a successful sync", () => {
     manager.enqueueChange({
       type: "INSPECTION_UPDATE",
       payload: { id: "insp-1" },
@@ -40,8 +40,10 @@ describe("SNAP-01: Offline Sync & PWA State Manager", () => {
 
     expect(manager.getPendingQueue()).toHaveLength(1);
     const flushed = manager.processPendingSyncQueue();
-    expect(flushed).toBe(1);
-    expect(manager.getPendingQueue()).toHaveLength(0);
-    expect(manager.getState().lastSyncedAt).toBeDefined();
+    expect(flushed).toBe(0);
+    expect(manager.getPendingQueue()).toHaveLength(1);
+    expect(manager.getState().lastSyncedAt).toBeNull();
+    window.dispatchEvent(new Event("online"));
+    expect(manager.getPendingQueue()).toHaveLength(1);
   });
 });

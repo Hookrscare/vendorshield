@@ -83,17 +83,10 @@ export class OfflineSyncManager {
   }
 
   public processPendingSyncQueue(): number {
-    const queue = this.getPendingQueue();
-    if (queue.length === 0) return 0;
-
-    const count = queue.length;
-    // In local demo / offline mode, flush queue and update sync timestamp
-    if (typeof window !== "undefined") {
-      localStorage.removeItem(OFFLINE_SYNC_QUEUE_KEY);
-      this.lastSyncedAt = new Date().toISOString();
-    }
+    // There is no remote sync endpoint. Keep pending records until a real
+    // backend acknowledges them; network connectivity is not a successful sync.
     this.notify();
-    return count;
+    return 0;
   }
 
   public getState(): OfflineSyncState {

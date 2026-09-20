@@ -88,7 +88,7 @@ export function SubProcessorWidget() {
           </h1>
 
           <p className="text-xs sm:text-sm text-gray-400 max-w-xl mx-auto font-mono">
-            Customize your branding, copy 1 line of HTML or React code, and keep your website&apos;s `/subprocessors` page automatically compliant forever.
+            Preview a sample widget and copy its code. This generator always uses the ACME sample register; use your dashboard embed settings for your own organization. It does not establish compliance.
           </p>
         </div>
 

@@ -91,7 +91,7 @@ export default async function VendorDetailPage({
           </div>
 
           <p className="text-sm text-gray-300 leading-relaxed border-t border-gray-800/80 pt-4">
-            {vendor.description}
+            {vendor.description} This describes the third-party vendor, not a VendorShield feature. Listing details and certifications are unverified reference data; confirm them with the vendor.
           </p>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2 text-xs">
@@ -138,7 +138,7 @@ export default async function VendorDetailPage({
         <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6 space-y-4">
           <h2 className="text-base font-bold text-white flex items-center gap-2">
             <ShieldCheck className="w-5 h-5 text-emerald-400" />
-            Verified Security Frameworks &amp; Compliance Standards
+            Unverified reference certification labels
           </h2>
 
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2">
@@ -221,7 +221,7 @@ export default async function VendorDetailPage({
           <div>
             <h3 className="text-sm font-bold text-white">Are you a representative of {vendor.name}?</h3>
             <p className="text-xs text-gray-400 mt-0.5">
-              Claim this profile to verify your security certifications and receive sub-processor update inquiries.
+              Paid profile verification is not available. These reference listings do not verify security certifications.
             </p>
           </div>
           <div className="shrink-0 w-full sm:w-auto">

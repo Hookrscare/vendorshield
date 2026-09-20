@@ -6,21 +6,11 @@ import {
   ShieldCheck,
   CheckCircle2,
   ArrowRight,
-  Sparkles,
-  FileText,
-  Code2,
-  Database,
-  Lock,
-  Zap,
-  AlertTriangle,
-  Layers,
   ChevronDown,
   ChevronUp,
   Check,
   Eye,
-  Sliders,
   Cpu,
-  Fingerprint,
 } from "lucide-react";
 import { ThreeTrustGraph } from "@/components/canvas/ThreeTrustGraph";
 import { MagneticButton } from "@/components/motion/MagneticButton";
@@ -37,26 +27,11 @@ export default function LandingPage() {
   const moneySavedYearly = hoursSavedYearly * hourlyLegalCost;
 
   const faqs = [
-    {
-      q: "What is a sub-processor register, and why does my startup need one?",
-      a: "A sub-processor register is a formal, auditable list of all third-party vendors (e.g., AWS, OpenAI, Stripe, PostHog) that process customer personal data on your behalf. Under GDPR Article 28 and SOC 2 Trust Services Criteria (CC6.6 / CC9.2), startups are legally required to maintain this inventory, verify Data Processing Agreements (DPAs), and publicly notify customers of new sub-processors.",
-    },
-    {
-      q: "How does the embeddable `/subprocessors` widget work?",
-      a: "VendorShield gives you a single responsive <iframe> or React component snippet. You paste it onto your website (e.g., yourcompany.com/subprocessors). Whenever you add or update a vendor in your VendorShield dashboard, your public website disclosure updates instantly in real time.",
-    },
-    {
-      q: "Does this replace enterprise GRC platforms like Vanta or Drata?",
-      a: "VendorShield works alongside Vanta, Drata, and Secureframe. While general GRC platforms test internal employee laptops and AWS configurations, they lack lightweight public page widgets and granular vendor DPA lifecycle tracking. You can export VendorShield's audit pack and upload it directly as vendor management evidence.",
-    },
-    {
-      q: "How many pre-indexed SaaS vendors are included?",
-      a: "We pre-index 30+ of the most popular developer APIs, AI platforms, and cloud providers (OpenAI, Anthropic, AWS, Supabase, Vercel, Resend, Stripe, etc.) with pre-filled DPA URLs, security certifications, and common data fields. You can add any custom vendor in 10 seconds.",
-    },
-    {
-      q: "Can I export data for our SOC 2 Type II or ISO 27001 auditor?",
-      a: "Yes. In 1 click, you can generate an official auditor-ready PDF with compliance sign-offs, checksum hashes, and risk rankings, as well as raw CSV and JSON evidence files.",
-    },
+    { q: "What does the register store?", a: "Your team can record vendors, processing categories, DPA links and statuses, review dates, and disclosure details. These are user-maintained records, not independently verified compliance findings." },
+    { q: "How does the public page work?", a: "Publish a disclosure page and embed it with an iframe. Saved changes appear when the public page reloads; there is no continuous vendor monitoring or automatic detection of new integrations." },
+    { q: "Is the directory verified?", a: "The directory contains static reference descriptions and policy links for third-party vendors. Confirm current policies, certifications, and contractual terms directly with each vendor." },
+    { q: "What can I export?", a: "PDF, CSV, and JSON versions of your register. Exports are records for review, not digitally signed certificates, independent audit evidence verification, or guarantees of compliance." },
+    { q: "Are paid plans ready?", a: "Live purchases are unavailable. Some planned features, including automatic email alerts and custom domains, are not implemented. See the capability status page for details." },
   ];
 
   return (
@@ -68,7 +43,7 @@ export default function LandingPage() {
           <div className="lg:col-span-7 space-y-6 text-left">
             <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 text-xs font-mono tracking-wide">
               <ShieldCheck className="w-4 h-4 text-cyan-400" />
-              <span>SOC 2 (CC6.6 / CC9.2) &amp; GDPR ARTICLE 28 ENGINE</span>
+              <span>VENDOR RECORDS &amp; PUBLIC DISCLOSURES</span>
             </div>
 
             <h1 className="text-4xl sm:text-6xl lg:text-7xl font-display font-extrabold text-white tracking-tight leading-[1.08]">
@@ -80,7 +55,7 @@ export default function LandingPage() {
             </h1>
 
             <p className="text-base sm:text-lg text-gray-400 max-w-2xl leading-relaxed">
-              Eliminate spreadsheet chaos. Continuously monitor SaaS sub-processors, embed a live public disclosure page with 1 line of code, and export instant cryptographic audit packs for SOC 2 Type II and ISO 27001 auditors.
+              Keep vendor records and DPA details in one place, publish a sub-processor disclosure page, and export PDF, CSV, or JSON records for review. Records are maintained by your team; VendorShield does not independently certify compliance.
             </p>
 
             {/* CTA Group with Magnetic Physics */}
@@ -141,7 +116,7 @@ export default function LandingPage() {
             EXAMPLE SUB-PROCESSOR REGISTER
           </div>
           <h2 className="text-3xl sm:text-5xl font-display font-bold text-white tracking-tight">
-            Real-Time DPA &amp; Vendor Trust Registry
+            A clear view of your vendor register
           </h2>
           <p className="text-sm sm:text-base text-gray-400 font-sans">
             Illustrative vendor data showing how a register can be organized. These entries are examples, not verified customer records or endorsements.
@@ -374,13 +349,13 @@ export default function LandingPage() {
                     <Check className="w-4 h-4 text-cyan-400" /> Up to 35 active sub-processors
                   </li>
                   <li className="flex items-center gap-2">
-                    <Check className="w-4 h-4 text-cyan-400" /> 1-Click Signed SOC 2 / ISO PDF Export
+                    <Check className="w-4 h-4 text-cyan-400" /> PDF, CSV, and JSON record exports
                   </li>
                   <li className="flex items-center gap-2">
                     <Check className="w-4 h-4 text-cyan-400" /> Embeddable /subprocessors widget
                   </li>
                   <li className="flex items-center gap-2">
-                    <Check className="w-4 h-4 text-cyan-400" /> Automated DPA expiration alerts
+                    <Check className="w-4 h-4 text-cyan-400" /> DPA date tracking (email alerts unavailable)
                   </li>
                 </ul>
               </div>
@@ -409,13 +384,13 @@ export default function LandingPage() {
                     <Check className="w-4 h-4 text-indigo-400" /> Unlimited sub-processor inventory
                   </li>
                   <li className="flex items-center gap-2">
-                    <Check className="w-4 h-4 text-indigo-400" /> Custom domain trust portal (trust.yourdomain.com)
+                    <Check className="w-4 h-4 text-indigo-400" /> Custom domains: not available
                   </li>
                   <li className="flex items-center gap-2">
-                    <Check className="w-4 h-4 text-indigo-400" /> Multi-organization &amp; team access
+                    <Check className="w-4 h-4 text-indigo-400" /> Team invitations: incomplete acceptance flow
                   </li>
                   <li className="flex items-center gap-2">
-                    <Check className="w-4 h-4 text-indigo-400" /> Priority auditor support
+                    <Check className="w-4 h-4 text-indigo-400" /> Priority auditor support: not available
                   </li>
                 </ul>
               </div>
@@ -436,7 +411,7 @@ export default function LandingPage() {
         <div className="text-center space-y-2">
           <h2 className="text-3xl font-display font-bold text-white">Compliance FAQ</h2>
           <p className="text-xs sm:text-sm font-mono text-gray-400">
-            Common questions regarding SOC 2 CC6.6 and ISO 27001 sub-processor mandates.
+            How the register, public pages, and exports work.
           </p>
         </div>
 

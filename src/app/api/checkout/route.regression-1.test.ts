@@ -84,6 +84,15 @@ describe("POST /api/checkout", () => {
     );
   });
 
+  it.each(["dispel-pro", "dispel-enterprise", "snapinspect-solo", "snapinspect-team", "vendorshield-pso-claim"])("blocks checkout for unfinished %s before contacting Stripe", async (planId) => {
+    vi.stubEnv("STRIPE_SECRET_KEY", "sk_live_unused");
+    const fetchSpy = vi.spyOn(globalThis, "fetch");
+    const response = await POST(checkoutRequest(planId));
+    expect(response.status).toBe(503);
+    expect((await response.json()).url).toBeUndefined();
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
   it("keeps simulation available for local development only", async () => {
     vi.stubEnv("NODE_ENV", "development");
     vi.stubEnv("STRIPE_SECRET_KEY", "");
@@ -92,7 +101,7 @@ describe("POST /api/checkout", () => {
       new NextRequest("http://localhost:3000/api/checkout", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ planId: "dispel-pro" }),
+        body: JSON.stringify({ planId: "vendorshield-startup" }),
       })
     );
     const body = await response.json();

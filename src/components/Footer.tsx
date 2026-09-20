@@ -19,7 +19,7 @@ export function Footer() {
               </span>
             </div>
             <p className="text-xs text-gray-400 leading-relaxed">
-              Autonomous compliance, spatial inspection, and forensic reality intelligence engines for engineering and field professionals.
+              Vendor record management and local inspection prototypes. See capability status for current limits.
             </p>
             <div className="space-y-1.5 text-[11px] font-mono">
               <div className="flex items-center gap-1.5 text-cyan-400">
@@ -107,7 +107,7 @@ export function Footer() {
               </li>
               <li>
                 <Link href="/snapinspect#pricing" className="hover:text-white transition-colors">
-                  Pricing ($49 / $129 mo)
+                  SnapInspect availability
                 </Link>
               </li>
             </ul>
@@ -122,12 +122,12 @@ export function Footer() {
             <ul className="space-y-2 text-xs">
               <li>
                 <Link href="/dispel" className="hover:text-white transition-colors">
-                  Forensic Media Engine
+                  Dispel prototype status
                 </Link>
               </li>
               <li>
                 <Link href="/dispel/app" className="hover:text-white transition-colors">
-                  Live Forensic HUD
+                  Analysis unavailable
                 </Link>
               </li>
               <li>
@@ -137,12 +137,12 @@ export function Footer() {
               </li>
               <li>
                 <Link href="/tools/deepfake-scanner" className="hover:text-white transition-colors">
-                  Free Deepfake Scanner
+                  Scanner status
                 </Link>
               </li>
               <li>
                 <Link href="/dispel#pricing" className="hover:text-white transition-colors">
-                  Pricing ($29 / $299 mo)
+                  Dispel availability
                 </Link>
               </li>
             </ul>
@@ -167,7 +167,7 @@ export function Footer() {
               </li>
               <li>
                 <Link href="/dashboard/ai-scanner" className="hover:text-white transition-colors">
-                  AI DPA Contract Scanner
+                  DPA scanner status
                 </Link>
               </li>
               <li>
@@ -177,12 +177,12 @@ export function Footer() {
               </li>
               <li>
                 <Link href="/tools/deepfake-scanner" className="hover:text-white transition-colors">
-                  PRNU Sensor Noise Checker
+                  Media analysis status
                 </Link>
               </li>
               <li>
                 <Link href="/verify/0x8F3CA912" className="hover:text-white transition-colors">
-                  Cryptographic Attestation
+                  Verification unavailable
                 </Link>
               </li>
             </ul>

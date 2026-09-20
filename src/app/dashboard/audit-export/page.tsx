@@ -121,8 +121,8 @@ export default function AuditExportPage() {
           <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-5 py-4 text-sm text-emerald-100 flex items-center gap-2.5">
             <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
             <span>
-              <strong>Verified Organization Evidence Vault:</strong> Live audit export compiled from
-              active vendor registers and immutable SOC 2 audit events for{" "}
+              <strong>Organization record export:</strong> Export compiled from
+              user-maintained vendor records for{" "}
               <strong>{company?.name || "your organization"}</strong>.
             </span>
           </div>
@@ -138,7 +138,7 @@ export default function AuditExportPage() {
               SOC 2 / ISO 27001 Audit Export Center
             </h1>
             <p className="text-sm text-gray-400 mt-1">
-              Export verified compliance matrices formatted to meet AICPA CC6.6 / CC9.2 criteria.
+              Export your recorded vendor details. No independent compliance verification or digital signature is provided.
             </p>
           </div>
 
@@ -192,7 +192,7 @@ export default function AuditExportPage() {
               <div className="text-xs space-y-0.5">
                 <span className="font-semibold text-white">Signed DPA Ratio</span>
                 <p className="text-gray-400">
-                  {signedCount} of {vendors.length} vendors have executed DPAs on file.
+                  {signedCount} of {vendors.length} vendors are marked Signed in your records.
                 </p>
               </div>
             </div>
@@ -269,7 +269,7 @@ export default function AuditExportPage() {
         <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6 space-y-4">
           <h3 className="text-base font-bold text-white">Report Sign-Off Metadata</h3>
           <p className="text-xs text-gray-400">
-            Specify the executive or compliance officer name to be stamped onto the official PDF sign-off block.
+            Specify the executive or compliance officer name to be included in the PDF review block. This does not create a digital signature.
           </p>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">

@@ -26,6 +26,7 @@ export function VoiceRecorder({
   isProcessing,
 }: VoiceRecorderProps) {
   const [isRecording, setIsRecording] = useState(false);
+  const [voiceError, setVoiceError] = useState("");
   const [transcript, setTranscript] = useState("");
   const [seconds, setSeconds] = useState(0);
   const recognitionRef = useRef<SpeechRecognitionInstance | null>(null);
@@ -80,6 +81,11 @@ export function VoiceRecorder({
   }, []);
 
   const startRecording = () => {
+    if (!recognitionRef.current) {
+      setVoiceError("Speech recognition is unavailable in this browser. Use an explicitly labeled sample or enter observations manually.");
+      return;
+    }
+    setVoiceError("");
     setTranscript("");
     setSeconds(0);
     setIsRecording(true);
@@ -95,8 +101,6 @@ export function VoiceRecorder({
       } catch (err) {
         console.warn("Recognition start failed or already active", err);
       }
-    } else {
-      simulateVoiceStream();
     }
   };
 
@@ -115,25 +119,13 @@ export function VoiceRecorder({
       }
     }
 
-    const finalTranscript =
-      transcript.trim() ||
-      "Observed double-tapped breaker on service panel in garage. Safety hazard. Needs licensed electrician repair estimated $350.";
+    const finalTranscript = transcript.trim();
+    if (!finalTranscript) {
+      setVoiceError("No speech was captured. No defect has been added.");
+      return;
+    }
     setTranscript(finalTranscript);
     notifyComplete(finalTranscript);
-  };
-
-  const simulateVoiceStream = () => {
-    const sample = SAMPLE_VOICE_PROMPTS[0].spokenText;
-    const words = sample.split(" ");
-    let index = 0;
-    const interval = setInterval(() => {
-      if (index < words.length) {
-        setTranscript((prev) => (prev ? prev + " " + words[index] : words[index]));
-        index++;
-      } else {
-        clearInterval(interval);
-      }
-    }, 280);
   };
 
   const handleApplySample = (sampleText: string) => {
@@ -153,7 +145,7 @@ export function VoiceRecorder({
               TACTICAL DEFECT AUDIO RECEPTOR
             </h4>
             <p className="text-[10px] text-gray-400 font-sans">
-              Speech-to-Defect neural transcription (InterNACHI &amp; ASTM parser).
+              Browser speech recognition with keyword-based suggestions. Review all results.
             </p>
           </div>
         </div>
@@ -190,7 +182,7 @@ export function VoiceRecorder({
           </div>
         ) : (
           <div className="text-xs text-gray-500 font-mono flex items-center gap-2">
-            <span>{transcript ? "Defect audio captured ✓" : "Receptor standing by. Tap record."}</span>
+            <span>{transcript ? "Transcript or sample text ready" : "Receptor standing by. Tap record."}</span>
           </div>
         )}
       </div>
@@ -209,6 +201,8 @@ export function VoiceRecorder({
           </span>
         )}
       </div>
+
+      {voiceError && <p role="alert" className="text-sm text-amber-200">{voiceError}</p>}
 
       {/* Control Buttons */}
       <div className="flex flex-col sm:flex-row items-center gap-3">

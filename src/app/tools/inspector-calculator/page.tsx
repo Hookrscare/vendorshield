@@ -95,7 +95,7 @@ Generated via SnapInspect Field Engine: https://vendorshield-blond.vercel.app/sn
           </h1>
 
           <p className="text-xs sm:text-sm text-gray-400 max-w-xl mx-auto font-mono">
-            Calculate profitable inspection quotes based on trade standards, square footage, property hazards, and high-margin ancillary add-ons.
+            Illustrative fee arithmetic using preset rates, square footage, property age, and selected add-ons. These are not verified market rates or a guarantee of profitability.
           </p>
         </div>
 

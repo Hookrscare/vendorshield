@@ -14,7 +14,7 @@ export const INSPECTOR_TOOLKIT_RESOURCES: ToolkitResource[] = [
     id: "pre-inspection-agreement",
     title: "Standard Pre-Inspection Agreement & Limitation of Liability",
     category: "Contract",
-    badge: "InterNACHI / ASHI Aligned",
+    badge: "Unreviewed template",
     description:
       "A comprehensive contract covering inspection scope, liability limits, visual exclusions, and client indemnification.",
     format: "Markdown & Text",
@@ -25,7 +25,7 @@ export const INSPECTOR_TOOLKIT_RESOURCES: ToolkitResource[] = [
     id: "roof-defect-disclaimers",
     title: "50+ Defect & Limitation Clause Library for Inspection Reports",
     category: "Disclaimer",
-    badge: "Field-Tested Clauses",
+    badge: "Example clauses",
     description:
       "Pre-written clauses for high-liability roofing, electrical, HVAC, crawlspace, moisture, and structural findings.",
     format: "Markdown / Copy-Ready",
@@ -45,9 +45,9 @@ export const INSPECTOR_TOOLKIT_RESOURCES: ToolkitResource[] = [
   },
   {
     id: "notion-operating-system",
-    title: "The Solo Inspector Notion OS Workspace Template",
+    title: "Solo Inspector Notion Workspace Blueprint",
     category: "Notion",
-    badge: "Turnkey Operating System",
+    badge: "Workspace blueprint",
     description:
       "A workspace blueprint for client CRM, inspection scheduling, equipment calibration, referrals, and expenses.",
     format: "Notion Blueprint / Markdown",
@@ -58,7 +58,7 @@ export const INSPECTOR_TOOLKIT_RESOURCES: ToolkitResource[] = [
     id: "client-followup-scripts",
     title: "Client Email & 5-Star Google Review Sequences",
     category: "Email Template",
-    badge: "5-Star Review Engine",
+    badge: "Communication templates",
     description:
       "Email and SMS templates for confirmations, report delivery, contractor referrals, and review requests.",
     format: "Email Copy",

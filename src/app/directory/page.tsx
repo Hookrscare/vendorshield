@@ -57,7 +57,7 @@ export default function DirectoryPage() {
           </h1>
 
           <p className="text-sm sm:text-base text-gray-400 leading-relaxed">
-            Instant lookups for SOC 2 Type II, GDPR Data Processing Agreements (DPAs), and third-party vendor compliance policies across 30+ leading developer APIs and SaaS stacks.
+            Reference descriptions and policy links for third-party services. These are not VendorShield features, endorsements, or independently verified certifications. Confirm current details with each vendor.
           </p>
         </div>
 
@@ -119,7 +119,7 @@ export default function DirectoryPage() {
                   </div>
 
                   <span className="text-[10px] font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full flex items-center gap-1">
-                    <CheckCircle2 className="w-3 h-3" /> Verified
+                    <CheckCircle2 className="w-3 h-3" /> Reference
                   </span>
                 </div>
 

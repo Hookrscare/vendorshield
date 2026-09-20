@@ -32,7 +32,7 @@ export function generateAuditorPdf(
   doc.setFontSize(9);
   doc.setFont("helvetica", "normal");
   doc.setTextColor(148, 163, 184); // slate-400
-  doc.text(`Official Compliance Disclosure & Vendor Risk Inventory | Generated for Security Audit`, 14, 23);
+  doc.text(`Vendor Risk Inventory | Prepared from user-maintained records`, 14, 23);
   doc.text(`Company: ${company.name} | Web: ${company.website} | Date: ${dateStr}`, 14, 30);
 
   // Executive Metadata Box
@@ -52,13 +52,8 @@ export function generateAuditorPdf(
   doc.text(`Privacy & DPO Contact: ${company.privacyEmail}`, 18, 64);
   doc.text(`Total Active Sub-Processors: ${vendors.length}`, 115, 58);
   const signedCount = vendors.filter((v) => v.dpaStatus === "Signed").length;
-  doc.text(`Signed DPAs on File: ${signedCount} / ${vendors.length} (${Math.round((signedCount / (vendors.length || 1)) * 100)}%)`, 115, 64);
-  const checksum = `${Math.random().toString(36).substring(2, 10).toUpperCase()}-SOC2-VERIFIED`;
-  doc.text(`Report Checksum SHA-256: ${checksum}`, 18, 70);
-  doc.setTextColor(2, 132, 199); // sky-600
-  doc.textWithLink(`[Verify Online at: https://vendorshield-blond.vercel.app/verify/${checksum}]`, 115, 70, {
-    url: `https://vendorshield-blond.vercel.app/verify/${checksum}`,
-  });
+  doc.text(`DPAs marked Signed: ${signedCount} / ${vendors.length} (${Math.round((signedCount / (vendors.length || 1)) * 100)}%)`, 115, 64);
+  doc.text("User-maintained records. No independent attestation or digital signature.", 18, 70);
 
   // Table Data Preparation
   const tableRows = vendors.map((v, index) => [
@@ -69,7 +64,7 @@ export function generateAuditorPdf(
     v.dpaStatus,
     v.certifications.join(", ") || "None Logged",
     v.riskLevel,
-    v.nextReviewDate || "2027-01-01",
+    v.nextReviewDate || "Not recorded",
   ]);
 
   // Generate Table
@@ -130,10 +125,10 @@ export function generateAuditorPdf(
   if (finalY < 250) {
     doc.setFontSize(8);
     doc.setTextColor(100, 116, 139);
-    doc.text("Compliance Certification Statement:", 14, finalY + 12);
+    doc.text("Reviewer acknowledgement:", 14, finalY + 12);
     doc.setFont("helvetica", "italic");
     doc.text(
-      "I hereby certify that all listed third-party vendors and sub-processors have undergone security due diligence in alignment with SOC 2 Trust Services Criteria (CC6.6 / CC9.2) and GDPR Article 28 requirements.",
+      "This export reproduces the recorded vendor details. The reviewer must confirm their accuracy and supporting documents separately. VendorShield does not certify compliance or independently verify these records.",
       14,
       finalY + 17,
       { maxWidth: 182 }

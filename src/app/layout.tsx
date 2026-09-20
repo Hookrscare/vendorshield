@@ -29,7 +29,7 @@ const jetbrainsMono = JetBrains_Mono({
 export const metadata: Metadata = {
   title: "VendorShield | Automated Sub-Processor Register & SOC 2 Compliance Tracker",
   description:
-    "Continuously track SaaS sub-processors, automate DPA compliance, embed live /subprocessors disclosure pages, and generate 1-click SOC 2 Type II audit packs.",
+    "Organize vendor records and DPA details, publish sub-processor disclosures, and export your records. See current capability limits before using the prototypes.",
   keywords: [
     "sub processor register tool",
     "vendor risk assessment software for startups",
@@ -53,6 +53,7 @@ export default function RootLayout({
       <body className="min-h-screen flex flex-col bg-canvas-950 text-gray-100 font-sans antialiased selection:bg-cyan-500 selection:text-black bg-noise">
         <SmoothScrollProvider>
           <Navbar />
+          <div className="border-b border-amber-400/20 bg-amber-400/5 px-6 py-3 text-center text-sm text-amber-100">Product status: working register, local prototypes, and unavailable features. <a href="/capabilities" className="underline underline-offset-4">See what currently works</a>.</div>
           <main className="flex-1">{children}</main>
           <Footer />
         </SmoothScrollProvider>

@@ -93,13 +93,13 @@ export default function SOC2ReadinessScorecard() {
       return {
         rating: "MODERATE RISK (GRADE C)",
         color: "text-amber-400 border-amber-500/30 bg-amber-500/10",
-        message: "Warning: Missing DPAs or manual spreadsheets will trigger auditor exceptions.",
+        message: "Warning: Review missing documents and how your records are maintained with your auditor.",
       };
     }
     return {
       rating: "CRITICAL AUDIT RISK (GRADE F)",
       color: "text-rose-400 border-rose-500/30 bg-rose-500/10",
-      message: "Urgent: High risk of failing SOC 2 vendor management controls and enterprise security reviews.",
+      message: "Several checklist items need review. This score does not predict an audit outcome.",
     };
   };
 
@@ -120,7 +120,7 @@ export default function SOC2ReadinessScorecard() {
           </h1>
 
           <p className="text-xs sm:text-sm text-gray-400 max-w-xl mx-auto font-mono">
-            Answer 4 questions to evaluate your vendor risk posture and discover missing audit evidence in 60 seconds.
+            A four-question self-reported checklist with illustrative scoring. It does not inspect your systems or establish audit readiness or compliance.
           </p>
         </div>
 
