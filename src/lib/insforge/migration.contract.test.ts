@@ -18,6 +18,10 @@ const stripeLifecycleMigration = readFileSync(
   resolve(process.cwd(), "migrations/20260920104500_stripe-lifecycle-hardening.sql"),
   "utf8"
 );
+const cascadeSafeAuditMigration = readFileSync(
+  resolve(process.cwd(), "migrations/20260920150000_cascade-safe-vendor-audit.sql"),
+  "utf8"
+);
 
 describe("hardened persistence migration contract", () => {
   it("keeps writer checks recursion-safe and viewer-excluding", () => {
@@ -93,5 +97,13 @@ describe("Stripe lifecycle migration contract", () => {
     expect(stripeLifecycleMigration).toContain(
       "grant execute on function public.sync_stripe_subscription_event(text, text, text, text, timestamptz) to project_admin"
     );
+  });
+});
+
+describe("cascade-safe vendor audit migration contract", () => {
+  it("does not create orphan audit rows during organization cascades", () => {
+    expect(cascadeSafeAuditMigration).toContain("if exists (");
+    expect(cascadeSafeAuditMigration).toContain("from public.organizations organization");
+    expect(cascadeSafeAuditMigration).toContain("organization.id = old.organization_id");
   });
 });

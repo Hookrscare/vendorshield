@@ -91,7 +91,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       data: invite,
-      message: `Invitation sent to ${email}`,
+      message: `Invitation created for ${email}. Email delivery is not configured.`,
     });
   } catch (error) {
     if (error instanceof AuthorizationError) {
