@@ -1,21 +1,20 @@
 "use client";
 
-import { useState } from "react";
-import { DIRECTORY_VENDORS } from "@/lib/initial-data";
-import { Category, DirectoryVendor } from "@/lib/types";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
-  Database,
-  Search,
-  CheckCircle2,
-  ExternalLink,
-  Shield,
-  Sparkles,
+  ArrowDown,
   ArrowRight,
+  ArrowUpRight,
+  Search,
+  X,
   Plus,
+  Minus,
 } from "lucide-react";
+import { DIRECTORY_VENDORS } from "@/lib/initial-data";
+import { DocumentSculpture } from "@/components/directory/DocumentSculpture";
 
-const CATEGORIES: (Category | "All")[] = [
+const CATEGORIES = [
   "All",
   "AI & Machine Learning",
   "Cloud Infrastructure & Hosting",
@@ -26,175 +25,295 @@ const CATEGORIES: (Category | "All")[] = [
   "Customer Support & Communication",
   "Developer Tools & CI/CD",
 ];
+const LABELS = [
+  "All disciplines",
+  "AI & machine learning",
+  "Cloud infrastructure",
+  "Databases & storage",
+  "Payments",
+  "Analytics & observability",
+  "Identity & security",
+  "Communication & support",
+  "Developer tools",
+];
 
 export default function DirectoryPage() {
   const [search, setSearch] = useState("");
-  const [category, setCategory] = useState<string>("All");
-
-  const filtered = DIRECTORY_VENDORS.filter((item) => {
-    const matchesSearch =
-      item.name.toLowerCase().includes(search.toLowerCase()) ||
-      item.description.toLowerCase().includes(search.toLowerCase()) ||
-      item.commonDataProcessed.some((d) => d.toLowerCase().includes(search.toLowerCase()));
-
-    const matchesCat = category === "All" || item.category === category;
-
-    return matchesSearch && matchesCat;
-  });
+  const [category, setCategory] = useState("All");
+  const [visible, setVisible] = useState(12);
+  const [expanded, setExpanded] = useState<string | null>(null);
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    setSearch(params.get("q") || "");
+    if (CATEGORIES.includes(params.get("category") || ""))
+      setCategory(params.get("category")!);
+  }, []);
+  const changeFilter = (nextSearch: string, nextCategory: string) => {
+    setSearch(nextSearch);
+    setCategory(nextCategory);
+    setVisible(12);
+    setExpanded(null);
+    const url = new URL(window.location.href);
+    if (nextSearch) url.searchParams.set("q", nextSearch);
+    else url.searchParams.delete("q");
+    if (nextCategory !== "All") url.searchParams.set("category", nextCategory);
+    else url.searchParams.delete("category");
+    window.history.replaceState(
+      null,
+      "",
+      `${url.pathname}${url.search}${url.hash}`,
+    );
+  };
+  const query = search.trim().toLowerCase();
+  const filtered = DIRECTORY_VENDORS.filter(
+    (item) =>
+      (category === "All" || item.category === category) &&
+      [item.name, item.description, ...item.commonDataProcessed].some((text) =>
+        text.toLowerCase().includes(query),
+      ),
+  ).sort((a, b) => a.name.localeCompare(b.name));
 
   return (
-    <div className="min-h-screen bg-gray-950 text-gray-100 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-7xl mx-auto space-y-10">
-        {/* Hero Section */}
-        <div className="text-center max-w-3xl mx-auto space-y-4">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs font-semibold">
-            <Sparkles className="w-3.5 h-3.5" />
-            <span>Open Sub-Processor &amp; DPA Directory</span>
+    <div className="reference-page">
+      <div className="reference-container">
+        <section className="library-hero" aria-labelledby="library-title">
+          <div className="library-intro">
+            <p className="eyebrow">
+              <span>01 / The public directory</span>
+              <span>VendorShield</span>
+            </p>
+            <h1 id="library-title">
+              The vendor
+              <br />
+              <em>reference library.</em>
+            </h1>
+            <p className="hero-deck">
+              A considered view of the services behind your stack. Data
+              practices, policy links, and a place to begin your own review.
+            </p>
+            <a href="#vendor-index" className="text-action">
+              Explore {DIRECTORY_VENDORS.length} vendors <ArrowDown size={17} />
+            </a>
           </div>
-
-          <h1 className="text-3xl sm:text-5xl font-extrabold text-white tracking-tight">
-            The B2B SaaS Sub-Processor &amp; Security Database
-          </h1>
-
-          <p className="text-sm sm:text-base text-gray-400 leading-relaxed">
-            Reference descriptions and policy links for third-party services. These are not VendorShield features, endorsements, or independently verified certifications. Confirm current details with each vendor.
+          <DocumentSculpture count={DIRECTORY_VENDORS.length} />
+        </section>
+        <div className="library-note">
+          <span className="eyebrow">A note on the source</span>
+          <p>
+            Reference material, not verification. Listings and certification
+            labels are unverified. Confirm current details with each vendor.
           </p>
+          <Link
+            href="/capabilities"
+            aria-label="Read about capability and directory limitations"
+          >
+            <ArrowUpRight size={20} />
+          </Link>
         </div>
-
-        {/* Search & Category Pills */}
-        <div className="space-y-4 max-w-4xl mx-auto">
-          <div className="relative">
-            <Search className="w-5 h-5 absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Search vendor by name, API, or data processed (e.g. OpenAI, Stripe, AWS, Resend, Supabase)..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-12 pr-4 py-3.5 bg-gray-900 border border-gray-800 rounded-2xl text-sm sm:text-base text-white focus:outline-none focus:border-blue-500 placeholder-gray-500 shadow-xl"
-            />
-          </div>
-
-          <div className="flex flex-wrap items-center justify-center gap-2 pt-2">
-            {CATEGORIES.map((cat) => (
-              <button
-                key={cat}
-                onClick={() => setCategory(cat)}
-                className={`text-xs px-3.5 py-1.5 rounded-xl border transition-all ${
-                  category === cat
-                    ? "bg-blue-600 border-blue-500 text-white font-semibold shadow-md shadow-blue-600/30"
-                    : "bg-gray-900 border-gray-800 text-gray-400 hover:text-white hover:border-gray-700"
-                }`}
+        <section
+          id="vendor-index"
+          className="library-workspace"
+          aria-label="Browse vendor directory"
+        >
+          <aside className="library-sidebar">
+            <h2 className="eyebrow">Browse by discipline</h2>
+            <nav className="category-index" aria-label="Vendor categories">
+              {CATEGORIES.map((cat, i) => (
+                <button
+                  key={cat}
+                  aria-pressed={category === cat}
+                  onClick={() => changeFilter(search, cat)}
+                >
+                  <span className="category-number">
+                    {String(i).padStart(2, "0")}
+                  </span>
+                  <span>{LABELS[i]}</span>
+                  <span className="category-count">
+                    {cat === "All"
+                      ? DIRECTORY_VENDORS.length
+                      : DIRECTORY_VENDORS.filter((v) => v.category === cat)
+                          .length}
+                  </span>
+                </button>
+              ))}
+            </nav>
+            <label className="mobile-category">
+              Discipline
+              <select
+                value={category}
+                onChange={(event) => changeFilter(search, event.target.value)}
               >
-                {cat}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Directory Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 pt-4">
-          {filtered.map((item) => (
-            <div
-              key={item.slug}
-              className="bg-gray-900/90 border border-gray-800 hover:border-gray-700 rounded-2xl p-5 shadow-lg flex flex-col justify-between space-y-4 hover:bg-gray-800/30 transition-all group"
-            >
-              <div className="space-y-3">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-gray-800 border border-gray-700 flex items-center justify-center font-bold text-white text-sm">
-                      {item.name.charAt(0)}
-                    </div>
-                    <div>
-                      <Link
-                        href={`/directory/${item.slug}`}
-                        className="font-bold text-white group-hover:text-blue-400 transition-colors text-base flex items-center gap-1"
-                      >
-                        {item.name}
-                        <ArrowRight className="w-3.5 h-3.5 opacity-0 group-hover:opacity-100 transition-opacity" />
-                      </Link>
-                      <span className="text-[11px] text-blue-400 font-medium">
-                        {item.category}
-                      </span>
-                    </div>
-                  </div>
-
-                  <span className="text-[10px] font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full flex items-center gap-1">
-                    <CheckCircle2 className="w-3 h-3" /> Reference
-                  </span>
-                </div>
-
-                <p className="text-xs text-gray-300 leading-relaxed line-clamp-2">
-                  {item.description}
-                </p>
-
-                {/* Certifications */}
-                <div className="flex flex-wrap gap-1 pt-1">
-                  {item.certifications.map((cert, i) => (
-                    <span
-                      key={i}
-                      className="text-[10px] bg-gray-950 text-gray-400 border border-gray-800 px-2 py-0.5 rounded font-mono"
-                    >
-                      {cert}
-                    </span>
-                  ))}
-                </div>
-
-                {/* Data processed */}
-                <div>
-                  <span className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider block mb-1">
-                    Processed Data Types
-                  </span>
-                  <div className="flex flex-wrap gap-1">
-                    {item.commonDataProcessed.map((dp, i) => (
-                      <span
-                        key={i}
-                        className="text-[10px] bg-blue-950/30 text-blue-300 border border-blue-900/40 px-1.5 py-0.5 rounded"
-                      >
-                        {dp}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              {/* Actions Bottom Bar */}
-              <div className="pt-3 border-t border-gray-800/80 flex items-center justify-between text-xs">
-                <Link
-                  href={`/directory/${item.slug}`}
-                  className="text-gray-400 hover:text-white font-medium flex items-center gap-1 transition-colors"
-                >
-                  Compliance Profile <ArrowRight className="w-3 h-3" />
-                </Link>
-
-                <Link
-                  href="/dashboard"
-                  className="text-blue-400 hover:text-blue-300 font-semibold flex items-center gap-1"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  Add to Register
-                </Link>
+                {CATEGORIES.map((cat, i) => (
+                  <option key={cat} value={cat}>
+                    {LABELS[i]}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <div className="sidebar-note">
+              <span className="small-cross" aria-hidden="true">
+                +
+              </span>
+              <p>
+                Start with the source.
+                <br />
+                Build your own record.
+              </p>
+              <Link href="/dashboard" className="text-action">
+                Open your register <ArrowUpRight size={16} />
+              </Link>
+            </div>
+          </aside>
+          <div className="library-results">
+            <div className="library-search">
+              <label htmlFor="vendor-search" className="eyebrow">
+                Find a vendor
+              </label>
+              <div className="search-line">
+                <Search size={21} aria-hidden="true" />
+                <input
+                  id="vendor-search"
+                  type="search"
+                  value={search}
+                  onChange={(event) =>
+                    changeFilter(event.target.value, category)
+                  }
+                  placeholder="Name, service, or data processed…"
+                  autoComplete="off"
+                />
+                {search && (
+                  <button
+                    aria-label="Clear search"
+                    onClick={() => changeFilter("", category)}
+                  >
+                    <X size={18} />
+                  </button>
+                )}
               </div>
             </div>
-          ))}
-        </div>
-
-        {/* Lead Magnet Claim / Register CTA Banner */}
-        <div className="bg-gradient-to-r from-blue-900/40 via-indigo-900/30 to-purple-900/40 border border-blue-500/30 rounded-3xl p-8 sm:p-10 text-center space-y-4 max-w-4xl mx-auto shadow-2xl">
-          <h2 className="text-2xl sm:text-3xl font-extrabold text-white">
-            Need to track these vendors for your SOC 2 audit?
+            <div className="results-caption">
+              <p role="status" aria-live="polite">
+                {filtered.length} {filtered.length === 1 ? "vendor" : "vendors"}
+                {category !== "All"
+                  ? ` / ${LABELS[CATEGORIES.indexOf(category)]}`
+                  : " / All disciplines"}
+              </p>
+              <span>Alphabetical index</span>
+            </div>
+            <div className="vendor-list">
+              {filtered.slice(0, visible).map((item, i) => (
+                <article
+                  key={item.slug}
+                  className={`vendor-entry ${expanded === item.slug ? "expanded" : ""}`}
+                >
+                  <div className="vendor-row">
+                    <span className="vendor-number">
+                      {String(i + 1).padStart(2, "0")}
+                    </span>
+                    <div className="vendor-identity">
+                      <h3>
+                        <Link href={`/directory/${item.slug}`}>
+                          {item.name}
+                          <ArrowUpRight size={17} />
+                        </Link>
+                      </h3>
+                      <p>
+                        {LABELS[CATEGORIES.indexOf(item.category)] ||
+                          item.category}
+                      </p>
+                    </div>
+                    <p className="vendor-description">{item.description}</p>
+                    <button
+                      className="preview-toggle"
+                      aria-label={`${expanded === item.slug ? "Close" : "Preview"} ${item.name}`}
+                      aria-expanded={expanded === item.slug}
+                      aria-controls={`preview-${item.slug}`}
+                      onClick={() =>
+                        setExpanded(expanded === item.slug ? null : item.slug)
+                      }
+                    >
+                      {expanded === item.slug ? (
+                        <Minus size={20} />
+                      ) : (
+                        <Plus size={20} />
+                      )}
+                    </button>
+                  </div>
+                  <div
+                    id={`preview-${item.slug}`}
+                    className="vendor-preview"
+                    hidden={expanded !== item.slug}
+                  >
+                    <div>
+                      <h4 className="eyebrow">Common data processed</h4>
+                      <p>{item.commonDataProcessed.join(" · ")}</p>
+                    </div>
+                    <div className="preview-links">
+                      <a href={item.dpaUrl} target="_blank" rel="noreferrer">
+                        DPA source <ArrowUpRight size={16} />
+                      </a>
+                      <a
+                        href={item.subprocessorUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        Sub-processor source <ArrowUpRight size={16} />
+                      </a>
+                      <Link href={`/directory/${item.slug}`}>
+                        Read reference profile <ArrowRight size={16} />
+                      </Link>
+                    </div>
+                  </div>
+                </article>
+              ))}
+            </div>
+            {!filtered.length && (
+              <div className="directory-empty">
+                <span className="empty-glyph" aria-hidden="true">
+                  ∅
+                </span>
+                <h3>No matching vendors.</h3>
+                <p>Try another name or view all disciplines.</p>
+                <button
+                  className="ink-button"
+                  onClick={() => changeFilter("", "All")}
+                >
+                  Reset filters <ArrowRight size={17} />
+                </button>
+              </div>
+            )}
+            {filtered.length > visible && (
+              <div className="load-more">
+                <span>
+                  Showing {visible} of {filtered.length}
+                </span>
+                <button
+                  className="text-action"
+                  onClick={() => setVisible((value) => value + 12)}
+                >
+                  Show 12 more <Plus size={18} />
+                </button>
+              </div>
+            )}
+          </div>
+        </section>
+        <section className="library-closing">
+          <p className="eyebrow">From reference to record</p>
+          <h2>
+            A directory is a starting point.
+            <br />
+            <em>Your register is the working record.</em>
           </h2>
-          <p className="text-xs sm:text-sm text-gray-300 max-w-xl mx-auto">
-            VendorShield syncs DPA status, monitors vendor policy updates, and gives you an embeddable <code className="text-blue-400">/subprocessors</code> page in 2 minutes.
-          </p>
-          <div className="pt-2 flex justify-center gap-3">
-            <Link
-              href="/dashboard"
-              className="px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl shadow-lg shadow-blue-600/30 transition-all hover:scale-[1.02] text-sm"
-            >
-              Start Free Register
+          <div>
+            <p>
+              Keep your vendor details, record DPA status, and publish your
+              sub-processor disclosure from one workspace.
+            </p>
+            <Link href="/dashboard" className="ink-button">
+              Open your register <ArrowUpRight size={18} />
             </Link>
           </div>
-        </div>
+        </section>
       </div>
     </div>
   );

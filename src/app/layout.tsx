@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
-import { Syne, Plus_Jakarta_Sans, JetBrains_Mono } from "next/font/google";
+import { Syne, DM_Sans, JetBrains_Mono, Newsreader } from "next/font/google";
 import "./globals.css";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
-import { SmoothScrollProvider } from "@/components/motion/SmoothScrollProvider";
+import { CapabilityNotice } from "@/components/CapabilityNotice";
+import "./reference.css";
 
 const syne = Syne({
   subsets: ["latin"],
@@ -12,7 +13,7 @@ const syne = Syne({
   weight: ["500", "700", "800"],
 });
 
-const plusJakarta = Plus_Jakarta_Sans({
+const plusJakarta = DM_Sans({
   subsets: ["latin"],
   display: "swap",
   variable: "--font-sans",
@@ -26,8 +27,16 @@ const jetbrainsMono = JetBrains_Mono({
   weight: ["400", "500", "600"],
 });
 
+const editorial = Newsreader({
+  subsets: ["latin"],
+  display: "swap",
+  variable: "--font-editorial",
+  weight: ["400", "500"],
+  style: ["normal", "italic"],
+});
+
 export const metadata: Metadata = {
-  title: "VendorShield | Automated Sub-Processor Register & SOC 2 Compliance Tracker",
+  title: "VendorShield | Vendor records, clearly considered",
   description:
     "Organize vendor records and DPA details, publish sub-processor disclosures, and export your records. See current capability limits before using the prototypes.",
   keywords: [
@@ -48,15 +57,20 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`dark ${syne.variable} ${plusJakarta.variable} ${jetbrainsMono.variable}`}
+      className={`dark ${syne.variable} ${plusJakarta.variable} ${jetbrainsMono.variable} ${editorial.variable}`}
     >
       <body className="min-h-screen flex flex-col bg-canvas-950 text-gray-100 font-sans antialiased selection:bg-cyan-500 selection:text-black bg-noise">
-        <SmoothScrollProvider>
+        <>
           <Navbar />
-          <div className="border-b border-amber-400/20 bg-amber-400/5 px-6 py-3 text-center text-sm text-amber-100">Product status: working register, local prototypes, and unavailable features. <a href="/capabilities" className="underline underline-offset-4">See what currently works</a>.</div>
-          <main className="flex-1">{children}</main>
+          <CapabilityNotice />
+          <a href="#main-content" className="skip-link">
+            Skip to content
+          </a>
+          <main id="main-content" className="flex-1">
+            {children}
+          </main>
           <Footer />
-        </SmoothScrollProvider>
+        </>
       </body>
     </html>
   );
