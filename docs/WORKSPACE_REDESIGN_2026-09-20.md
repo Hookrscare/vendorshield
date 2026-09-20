@@ -39,3 +39,18 @@ The high-impact fixes are the workspace composition, record legibility and truth
 Production deployment and final synthetic-fixture cleanup are recorded in the completion report.
 
 Follow-up production testing revealed the legacy server also supplied default locations/review dates. The mapper and write payloads were corrected; 27 focused repository/migration/authorization checks passed, including three new regressions.
+
+## Final production result
+
+Production code commit `7c2ad0f` deployed to `https://vendorshield-r7l3tyd7c-rrcc1.vercel.app`, aliased to `https://vendorshield-blond.vercel.app`. The combined final focused suite passed **46 tests across 10 files**. The final production build passed.
+
+Direct production browsing confirmed the redesigned demo/read-only workspace with no console errors. A fresh synthetic owner session was then used against production via the loopback proxy: directory import and subsequent edit succeeded, and the saved API response confirmed `Under Review`, blank location, blank last/next review dates, and the edited notes. Light OS preference still rendered dark; reduced-motion produced zero-duration transitions.
+
+Both temporary test organizations and their associated records were deleted, and both temporary users were removed successfully (HTTP 200). The first session expired during the final deployment; it was cleaned before creating the fresh final-verification session. Test proxy and local preview servers were stopped. Browser emulation was reset.
+
+Screenshots in `/Users/castro/.codex/visualizations/2026/09/20/01a0bf81-b5b4-7402-a3c7-a398e75bc713/vendorshield-workspace/`:
+- `dashboard-before.jpg`
+- `dashboard-desktop-live.jpg` and `dashboard-mobile-live.jpg` (synthetic signed-in production session)
+- `settings-desktop.jpg`, `exports-desktop.jpg`, `edit-mobile.jpg`, `team-mobile.jpg`, `error-mobile.jpg` (local production-build checks)
+
+No remaining work is required for this requested workspace redesign. The explicitly out-of-scope product/account/public-disclosure areas listed above remain unchanged.
