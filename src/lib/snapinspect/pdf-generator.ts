@@ -27,7 +27,7 @@ export function generateInspectionPdf(inspection: InspectionData) {
   doc.setTextColor(255, 255, 255);
   doc.setFontSize(16);
   doc.setFont("helvetica", "bold");
-  doc.text("SNAPINSPECT AI — OFFICIAL PROPERTY INSPECTION REPORT", 14, 16);
+  doc.text("SNAPINSPECT — PROPERTY INSPECTION DRAFT", 14, 16);
 
   doc.setFontSize(9);
   doc.setFont("helvetica", "normal");
@@ -203,9 +203,9 @@ function drawFooterAndDisclaimer(
   doc.setFontSize(7.5);
   doc.setTextColor(51, 65, 85);
   doc.text(
-    `Certified Inspector Signature: ___________________________ (${inspectorName})`,
+    `Reviewer Signature: ___________________________ (${inspectorName})`,
     18,
     startY + 32
   );
-  doc.text(`Official Seal & Verification Timestamp: ${new Date().toISOString()}`, 115, startY + 32);
+  doc.text(`Generated (not independently verified): ${new Date().toISOString()}`, 115, startY + 32);
 }

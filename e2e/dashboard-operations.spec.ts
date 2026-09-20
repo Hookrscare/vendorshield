@@ -60,9 +60,9 @@ test.describe("Dashboard & Compliance Operations", () => {
     await expect(iframe).toBeVisible();
   });
 
-  test("AI scanner center (/dashboard/ai-scanner) loads contract analysis UI", async ({ page }) => {
+  test("DPA scanner fails closed until genuine analysis is available", async ({ page }) => {
     await page.goto("/dashboard/ai-scanner");
 
-    await expect(page.locator("h1")).toContainText(/DPA.*Contract Scanner/i);
+    await expect(page.locator("h1")).toContainText(/DPA analysis is unavailable/i);
   });
 });

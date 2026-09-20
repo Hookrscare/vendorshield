@@ -761,7 +761,7 @@ export default function SnapInspectAppPage() {
             <div className="bg-gradient-to-r from-red-950/40 via-gray-900 to-gray-900 border-2 border-red-500/40 rounded-3xl p-6 sm:p-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-2xl">
               <div>
                 <span className="text-xs uppercase font-bold text-red-400 tracking-wider flex items-center gap-1.5">
-                  <Sparkles className="w-3.5 h-3.5" /> Client Deliverable Ready
+                  <Sparkles className="w-3.5 h-3.5" /> Report draft — review before sharing
                 </span>
                 <h3 className="text-2xl font-extrabold text-white mt-1">
                   {activeInspection.title}
@@ -786,7 +786,7 @@ export default function SnapInspectAppPage() {
                   className="flex-1 sm:flex-none px-6 py-2.5 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white text-xs font-bold rounded-xl shadow-lg shadow-red-600/30 flex items-center justify-center gap-1.5 transition-transform active:scale-95"
                 >
                   <Download className="w-4 h-4" />
-                  <span>{isGeneratingPdf ? "Generating..." : "Download Official PDF"}</span>
+                  <span>{isGeneratingPdf ? "Generating..." : "Download PDF Draft"}</span>
                 </button>
               </div>
             </div>
@@ -818,7 +818,7 @@ export default function SnapInspectAppPage() {
               <div className="flex items-center gap-2 text-xs text-emerald-400">
                 <CheckCircle2 className="w-4 h-4" />
                 <span>
-                  Inspector Sign-off verified for {activeInspection.inspectorName} ({activeInspection.inspectorCompany})
+                  Inspector details entered for {activeInspection.inspectorName} ({activeInspection.inspectorCompany})
                 </span>
               </div>
             </div>

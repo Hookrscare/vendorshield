@@ -53,3 +53,7 @@ Follow-up: disabled fake analysis/certificates and incomplete downloads, fixed l
 6. Establish real billing configuration and paid-plan delivery before re-enabling purchase UI. No revenue or paying customers were established by this audit.
 
 See `ASSISTED_PILOT_ACQUISITION_2026-09-20.md` for a draft-only, five-prospect acquisition packet.
+
+## Integrity-release validation
+
+Production build passed. Vitest: 1,439 tests across 425 files passed. Focused lint reported no errors (existing loose-type warnings remain). Desktop and 390px mobile browser review of `/capabilities` passed; SnapInspect report screen showed disabled client sharing. Final wording removes unsupported inspector sign-off and PDF seal claims. This snapshot describes the integrity release; subsequent implementation work must update the capability statuses as it gains end-to-end evidence.

@@ -88,7 +88,7 @@ export default function EmbedCodePage() {
             <Sparkles className="w-5 h-5 text-emerald-400 shrink-0" />
             <span>
               <strong>Live Workspace Integration:</strong> This widget dynamically displays{" "}
-              <strong>{company?.name || "your organization"}</strong>&apos;s verified public
+              <strong>{company?.name || "your organization"}</strong>&apos;s published public
               sub-processors. Changes in your dashboard reflect immediately on your live website.
             </span>
           </div>
