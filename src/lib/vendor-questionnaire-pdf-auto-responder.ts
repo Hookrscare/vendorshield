@@ -68,10 +68,8 @@ export class VendorQuestionnairePdfAutoResponder {
   };
 
   public evaluateQuestionnaire(vendorName: string, items: QuestionnaireItem[]): QuestionnaireEvaluationReport {
-    if (!vendorName || !vendorName.strip) {
-      if (!vendorName || vendorName.trim().length === 0) {
-        throw new Error("vendorName must be a non-empty string.");
-      }
+    if (!vendorName || vendorName.trim().length === 0) {
+      throw new Error("vendorName must be a non-empty string.");
     }
     if (!items || items.length === 0) {
       throw new Error("items must contain at least one questionnaire item.");

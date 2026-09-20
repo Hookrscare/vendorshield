@@ -39,6 +39,9 @@ export const InsForgeTeamRepository = {
     if (membersRes.error) {
       throw new Error(`Failed to load team members: ${membersRes.error.message}`);
     }
+    if (invitesRes.error) {
+      throw new Error(`Failed to load team invitations: ${invitesRes.error.message}`);
+    }
 
     const memberRows = membersRes.data as unknown as Array<{
       user_id: string;
@@ -105,37 +108,7 @@ export const InsForgeTeamRepository = {
       invite_expires_at: expiresAt,
     });
 
-    if (error) {
-      // Fallback to table insert if RPC unapplied
-      const { data: insertData, error: insertError } = await context.client.database
-        .from("organization_invites")
-        .upsert([
-          {
-            organization_id: context.organization.id,
-            email: normalizedEmail,
-            role,
-            invited_by: context.user.id,
-            token,
-            expires_at: expiresAt,
-          },
-        ])
-        .select("id, email, role, expires_at, created_at")
-        .single();
-
-      if (insertError || !insertData) {
-        throw new Error(
-          `Failed to create invite: ${insertError?.message || error.message}`
-        );
-      }
-
-      return {
-        id: insertData.id,
-        email: insertData.email,
-        role: insertData.role,
-        expiresAt: insertData.expires_at,
-        createdAt: insertData.created_at,
-      };
-    }
+    if (error) throw new Error(`Failed to create invite: ${error.message}`);
 
     const invite = data as unknown as {
       id: string;
@@ -168,20 +141,7 @@ export const InsForgeTeamRepository = {
       target_user_id: targetUserId,
     });
 
-    if (error) {
-      // Fallback to direct delete if RPC not applied
-      const { error: deleteError } = await context.client.database
-        .from("organization_members")
-        .delete()
-        .eq("organization_id", context.organization.id)
-        .eq("user_id", targetUserId);
-
-      if (deleteError) {
-        throw new Error(`Failed to remove team member: ${deleteError.message}`);
-      }
-
-      return true;
-    }
+    if (error) throw new Error(`Failed to remove team member: ${error.message}`);
 
     return Boolean(data);
   },

@@ -80,6 +80,22 @@ export async function POST(request: NextRequest) {
       (tenantResult && tenantResult.success
         ? tenantResult.context.user.email
         : undefined);
+    const clientMetadata =
+      metadata && typeof metadata === "object" && !Array.isArray(metadata)
+        ? (metadata as Record<string, unknown>)
+        : {};
+    const vendorSlug = clientMetadata.vendorSlug;
+
+    if (
+      planId === "vendorshield-pso-claim" &&
+      (typeof vendorSlug !== "string" ||
+        !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(vendorSlug))
+    ) {
+      return NextResponse.json(
+        { success: false, error: "A valid vendor profile is required" },
+        { status: 400 }
+      );
+    }
 
     // If Stripe Secret Key is configured, execute official Stripe Checkout
     if (stripeSecretKey) {
@@ -98,11 +114,12 @@ export async function POST(request: NextRequest) {
             "metadata[planId]": planId,
             ...(orgId ? { "metadata[organizationId]": orgId } : {}),
             ...(userId ? { "metadata[userId]": userId } : {}),
-            ...(metadata && typeof metadata === "object"
-              ? Object.entries(metadata as Record<string, unknown>).reduce(
+            ...(Object.entries(clientMetadata).length > 0
+              ? Object.entries(clientMetadata).reduce(
                   (acc, [k, v]) => {
                     if (
                       typeof v === "string" &&
+                      !["planId", "organizationId", "userId"].includes(k) &&
                       k.length <= 40 &&
                       v.length <= 500
                     ) {

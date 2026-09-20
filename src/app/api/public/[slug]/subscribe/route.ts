@@ -24,25 +24,39 @@ export async function POST(
       );
     }
 
-    // Attempt subscription via InsForge client
-    try {
-      const client = await createInsForgeServerClient();
-      const { error } = await client.database.rpc("subscribe_subprocessor_changes", {
-        p_slug: slug,
-        p_email: email,
+    const normalizedSlug = slug.toLowerCase().trim();
+    if (["demo", "acme", "acme-saas"].includes(normalizedSlug)) {
+      return NextResponse.json({
+        success: true,
+        message: "Demo subscription confirmed. No email was stored.",
+        isDemo: true,
       });
+    }
 
-      if (error) {
-        // Fallback or demo slug: log and still succeed
-        console.warn("Subscriber RPC fallback:", error.message);
-      }
-    } catch {
-      // In demo mode without active DB connection, still succeed gracefully
+    const client = await createInsForgeServerClient();
+    const { data, error } = await client.database.rpc("subscribe_subprocessor_changes", {
+      p_slug: normalizedSlug,
+      p_email: email,
+    });
+
+    if (error) {
+      console.error("Subscriber persistence failed", error.message);
+      return NextResponse.json(
+        { success: false, error: "Change-alert subscriptions are temporarily unavailable" },
+        { status: 503 }
+      );
+    }
+
+    if (!data) {
+      return NextResponse.json(
+        { success: false, error: "Public register not found" },
+        { status: 404 }
+      );
     }
 
     return NextResponse.json({
       success: true,
-      message: `Successfully subscribed ${email} to sub-processor change alerts for ${slug}.`,
+      message: "Subscription confirmed. You will receive sub-processor change alerts.",
     });
   } catch {
     return NextResponse.json(

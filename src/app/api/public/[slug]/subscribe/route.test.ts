@@ -24,7 +24,7 @@ describe("Public Sub-Processor Change Subscribe Route (QA-108)", () => {
     expect(resInvalid.status).toBe(400);
   });
 
-  it("subscribes valid email addresses and returns confirmation", async () => {
+  it("does not persist email addresses entered on the demo register", async () => {
     const rpcMock = vi.fn().mockResolvedValue({ error: null });
     vi.spyOn(serverModule, "createInsForgeServerClient").mockResolvedValue({
       database: {
@@ -42,9 +42,27 @@ describe("Public Sub-Processor Change Subscribe Route (QA-108)", () => {
 
     const body = await res.json();
     expect(body.success).toBe(true);
-    expect(body.message).toContain("compliance-officer@enterprise.com");
+    expect(body.isDemo).toBe(true);
+    expect(body.message).not.toContain("compliance-officer@enterprise.com");
+    expect(rpcMock).not.toHaveBeenCalled();
+  });
+
+  it("persists valid email addresses for a real public register", async () => {
+    const rpcMock = vi.fn().mockResolvedValue({ data: true, error: null });
+    vi.spyOn(serverModule, "createInsForgeServerClient").mockResolvedValue({
+      database: { rpc: rpcMock },
+    } as any);
+
+    const req = new NextRequest("http://localhost:3000/api/public/customer/subscribe", {
+      method: "POST",
+      body: JSON.stringify({ email: "compliance-officer@enterprise.com" }),
+    });
+
+    const res = await SUBSCRIBE(req, { params: Promise.resolve({ slug: "customer" }) });
+    expect(res.status).toBe(200);
+    await expect(res.json()).resolves.toMatchObject({ success: true });
     expect(rpcMock).toHaveBeenCalledWith("subscribe_subprocessor_changes", {
-      p_slug: "acme-saas",
+      p_slug: "customer",
       p_email: "compliance-officer@enterprise.com",
     });
   });

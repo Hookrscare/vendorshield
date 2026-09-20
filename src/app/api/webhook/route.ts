@@ -68,9 +68,16 @@ export async function POST(request: NextRequest) {
       type?: string;
       data?: {
         object?: {
+          id?: string;
+          status?: string;
+          current_period_end?: number | null;
           customer_email?: string | null;
           customer_details?: { email?: string | null } | null;
-          metadata?: { planId?: string } | null;
+          metadata?: {
+            planId?: string;
+            organizationId?: string;
+            vendorSlug?: string;
+          } | null;
         };
       };
     };
@@ -87,7 +94,8 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: "Invalid event payload" }, { status: 400 });
       }
       const plan = session.metadata?.planId || "subscription";
-      const orgId = (session.metadata as { organizationId?: string })?.organizationId || null;
+      const orgId = session.metadata?.organizationId || null;
+      const vendorSlug = session.metadata?.vendorSlug || null;
       const customerId = (session as { customer?: string })?.customer || null;
       const subscriptionId = (session as { subscription?: string })?.subscription || null;
 
@@ -103,6 +111,26 @@ export async function POST(request: NextRequest) {
           sessionId: (session as { id?: string })?.id || null,
         });
 
+        if (!recordResult.success) {
+          return NextResponse.json(
+            { error: "Webhook persistence failed" },
+            { status: 500 }
+          );
+        }
+
+        if (plan === "vendorshield-pso-claim" && vendorSlug) {
+          const claimRecorded = await InsForgeEntitlements.recordDirectoryClaim({
+            vendorSlug,
+            subscriptionId,
+          });
+          if (!claimRecorded) {
+            return NextResponse.json(
+              { error: "Directory claim persistence failed" },
+              { status: 500 }
+            );
+          }
+        }
+
         if (recordResult.deduplicated) {
           return NextResponse.json({ received: true, deduplicated: true });
         }
@@ -111,6 +139,52 @@ export async function POST(request: NextRequest) {
       console.log(
         `[Stripe Webhook] Checkout completed (Event: ${event.id || "unknown"}, Plan: ${plan})`
       );
+    }
+
+    if (
+      event.type === "customer.subscription.updated" ||
+      event.type === "customer.subscription.deleted"
+    ) {
+      const subscription = event.data?.object;
+      const subscriptionId = subscription?.id;
+      if (!event.id || !subscriptionId) {
+        return NextResponse.json({ error: "Invalid event payload" }, { status: 400 });
+      }
+
+      const rawStatus =
+        event.type === "customer.subscription.deleted"
+          ? "canceled"
+          : subscription.status;
+      const status =
+        rawStatus === "trialing" || rawStatus === "active" || rawStatus === "past_due"
+          ? rawStatus
+          : rawStatus === "incomplete_expired"
+            ? "expired"
+            : rawStatus === "canceled"
+              ? "canceled"
+              : "past_due";
+      const periodEnd = subscription.current_period_end
+        ? new Date(subscription.current_period_end * 1000).toISOString()
+        : null;
+      const result = await InsForgeEntitlements.syncStripeSubscription({
+        eventId: event.id,
+        eventType: event.type,
+        subscriptionId,
+        status,
+        periodEnd,
+      });
+
+      if (!result.success) {
+        return NextResponse.json(
+          { error: "Subscription persistence failed" },
+          { status: 500 }
+        );
+      }
+
+      return NextResponse.json({
+        received: true,
+        ...(result.deduplicated ? { deduplicated: true } : {}),
+      });
     }
 
     return NextResponse.json({ received: true });

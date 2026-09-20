@@ -2,6 +2,7 @@ import { createHmac } from "node:crypto";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
 import { POST } from "./route";
+import { InsForgeEntitlements } from "@/lib/insforge/entitlements";
 
 const WEBHOOK_SECRET = "whsec_test_regression_secret";
 
@@ -28,6 +29,10 @@ describe("POST /api/webhook", () => {
 
   it("accepts a correctly signed checkout event without logging customer email", async () => {
     vi.stubEnv("STRIPE_WEBHOOK_SECRET", WEBHOOK_SECRET);
+    vi.spyOn(
+      InsForgeEntitlements,
+      "recordStripeEventAndEntitlement"
+    ).mockResolvedValue({ success: true, deduplicated: false });
     const log = vi.spyOn(console, "log").mockImplementation(() => undefined);
     const payload = JSON.stringify({
       id: "evt_test_checkout_completed",
@@ -75,5 +80,33 @@ describe("POST /api/webhook", () => {
 
     expect(response.status).toBe(400);
     await expect(response.json()).resolves.toEqual({ error: "Invalid JSON payload" });
+  });
+
+  it("revokes access when Stripe reports a deleted subscription", async () => {
+    vi.stubEnv("STRIPE_WEBHOOK_SECRET", WEBHOOK_SECRET);
+    const sync = vi
+      .spyOn(InsForgeEntitlements, "syncStripeSubscription")
+      .mockResolvedValue({ success: true, deduplicated: false });
+    const payload = JSON.stringify({
+      id: "evt_subscription_deleted",
+      type: "customer.subscription.deleted",
+      data: {
+        object: {
+          id: "sub_test_123",
+          status: "canceled",
+          current_period_end: 1_800_000_000,
+        },
+      },
+    });
+
+    const response = await POST(signedRequest(payload));
+
+    expect(response.status).toBe(200);
+    expect(sync).toHaveBeenCalledWith(
+      expect.objectContaining({
+        subscriptionId: "sub_test_123",
+        status: "canceled",
+      })
+    );
   });
 });

@@ -73,7 +73,7 @@ describe("InsForgeEntitlements (QA-107)", () => {
 
   it("records new stripe event and provisions entitlement atomically via RPC", async () => {
     const rpcMock = vi.fn().mockResolvedValue({ data: true, error: null });
-    vi.spyOn(serverModule, "createInsForgeServerClient").mockResolvedValue({
+    vi.spyOn(serverModule, "createInsForgeAdminClient").mockReturnValue({
       database: {
         rpc: rpcMock,
       },
@@ -103,7 +103,7 @@ describe("InsForgeEntitlements (QA-107)", () => {
   it("handles duplicate event delivery as deduplicated without error", async () => {
     // Return data: false when event is already recorded
     const rpcMock = vi.fn().mockResolvedValue({ data: false, error: null });
-    vi.spyOn(serverModule, "createInsForgeServerClient").mockResolvedValue({
+    vi.spyOn(serverModule, "createInsForgeAdminClient").mockReturnValue({
       database: {
         rpc: rpcMock,
       },
@@ -118,5 +118,28 @@ describe("InsForgeEntitlements (QA-107)", () => {
 
     expect(result.success).toBe(true);
     expect(result.deduplicated).toBe(true);
+  });
+
+  it("synchronizes subscription lifecycle through the server-only RPC", async () => {
+    const rpcMock = vi.fn().mockResolvedValue({ data: true, error: null });
+    vi.spyOn(serverModule, "createInsForgeAdminClient").mockReturnValue({
+      database: { rpc: rpcMock },
+    } as any);
+
+    const result = await InsForgeEntitlements.syncStripeSubscription({
+      eventId: "evt_subscription_deleted",
+      eventType: "customer.subscription.deleted",
+      subscriptionId: "sub_test_123",
+      status: "canceled",
+    });
+
+    expect(result).toEqual({ success: true, deduplicated: false });
+    expect(rpcMock).toHaveBeenCalledWith("sync_stripe_subscription_event", {
+      p_event_id: "evt_subscription_deleted",
+      p_event_type: "customer.subscription.deleted",
+      p_subscription_id: "sub_test_123",
+      p_status: "canceled",
+      p_period_end: null,
+    });
   });
 });

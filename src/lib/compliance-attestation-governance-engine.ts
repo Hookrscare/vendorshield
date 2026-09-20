@@ -49,8 +49,7 @@ export class ComplianceAttestationGovernanceEngine {
       score += 40;
     } else if (evidence.soc2ReportCleanOpinion && evidence.soc2ReportAgeDays <= 450) {
       score += 20;
-      remediations.append?.("SOC 2 Type II report renewal required within 90 days.") ||
-        remediations.push("SOC 2 Type II report renewal required within 90 days.");
+      remediations.push("SOC 2 Type II report renewal required within 90 days.");
     } else {
       remediations.push("Missing or expired/qualified SOC 2 Type II attestation.");
     }

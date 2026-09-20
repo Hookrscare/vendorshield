@@ -116,10 +116,7 @@ export class ConfidentialComputingEnclaveRemoteAttestationQuoteVerifier {
       errors.push(`MRSigner mismatch: expected ${policy.expectedMrSigner}, found ${quote.mrsigner}`);
     }
 
-    const isEnclaveTrusted = errors.length === 0 && (
-      tcbStatus === "TCB_UP_TO_DATE" || 
-      (tcbStatus === "CONFIGURATION_AND_SW_HARDENING_NEEDED" && !!policy.allowConfigurationNeededTcb)
-    );
+    const isEnclaveTrusted = errors.length === 0 && tcbStatus === "TCB_UP_TO_DATE";
 
     const rawProof = `${quote.quoteId}:${quote.enclaveInstanceId}:${isEnclaveTrusted}:${tcbStatus}:${freshnessValid}:${reportDataBound}`;
     const digest = createHash("sha256").update(rawProof).digest("hex");

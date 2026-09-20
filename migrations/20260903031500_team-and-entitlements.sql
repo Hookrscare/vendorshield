@@ -1,7 +1,36 @@
 -- Migration: 20260903031500_team-and-entitlements.sql
 -- Description: Atomic team invitations, membership management, and durable webhook entitlement provisioning.
 
--- 1. Create team invitation RPC
+-- 1. Durable organization invitations. Runtime callers may only read rows that
+-- belong to an organization they administer; writes go through the RPC below.
+create table if not exists public.organization_invites (
+  id uuid primary key default gen_random_uuid(),
+  organization_id uuid not null references public.organizations(id) on delete cascade,
+  email text not null check (char_length(email) between 3 and 254),
+  role text not null check (role in ('admin', 'member', 'viewer')),
+  invited_by uuid not null references auth.users(id) on delete restrict,
+  token text not null unique check (char_length(token) between 16 and 256),
+  expires_at timestamptz not null,
+  created_at timestamptz not null default now(),
+  unique (organization_id, email)
+);
+
+create index if not exists organization_invites_org_created_idx
+  on public.organization_invites(organization_id, created_at desc);
+create index if not exists organization_invites_expires_idx
+  on public.organization_invites(expires_at);
+
+alter table public.organization_invites enable row level security;
+
+drop policy if exists organization_invites_select on public.organization_invites;
+create policy organization_invites_select
+on public.organization_invites for select to authenticated
+using (public.is_organization_admin(organization_id));
+
+revoke all on public.organization_invites from anon, authenticated;
+grant select on public.organization_invites to authenticated;
+
+-- 2. Create team invitation RPC
 create or replace function public.create_team_invite(
   target_org_id uuid,
   invite_email text,
@@ -31,6 +60,16 @@ begin
 
   if invite_role not in ('admin', 'member', 'viewer') then
     raise exception 'invalid role specified for invitation';
+  end if;
+
+  if invite_email is null
+    or char_length(lower(btrim(invite_email))) not between 3 and 254
+    or lower(btrim(invite_email)) !~ '^[^[:space:]@]+@[^[:space:]@]+\.[^[:space:]@]+$' then
+    raise exception 'invalid invitation email';
+  end if;
+
+  if invite_expires_at <= now() then
+    raise exception 'invitation expiry must be in the future';
   end if;
 
   insert into public.organization_invites (
@@ -65,7 +104,7 @@ begin
 end;
 $$;
 
--- 2. Remove team member RPC
+-- 3. Remove team member RPC
 create or replace function public.remove_team_member(
   target_org_id uuid,
   target_user_id uuid
@@ -102,6 +141,10 @@ begin
 
   -- Protect against removing the sole owner
   if target_member_role = 'owner' then
+    if caller_role <> 'owner' then
+      raise exception 'only an organization owner can remove another owner';
+    end if;
+
     select count(*) into owner_count
     from public.organization_members membership
     where membership.organization_id = target_org_id
@@ -120,7 +163,8 @@ begin
 end;
 $$;
 
--- 3. Atomic Stripe event recording and entitlement provisioning
+-- 4. Atomic Stripe event recording and entitlement provisioning.
+-- This function is server-only and must be called with the project admin client.
 create or replace function public.record_stripe_event_and_entitlement(
   p_event_id text,
   p_event_type text,
@@ -179,14 +223,16 @@ begin
     -- Append audit log entry
     insert into public.audit_events (
       organization_id,
-      event_type,
+      actor_user_id,
+      action,
       entity_type,
       entity_id,
-      metadata
+      details
     ) values (
       p_org_id,
-      'entitlement_provisioned',
-      'entitlements',
+      null,
+      'ENTITLEMENT_PROVISIONED',
+      'entitlement',
       p_product_key,
       jsonb_build_object(
         'productKey', p_product_key,
@@ -201,11 +247,11 @@ begin
 end;
 $$;
 
--- 4. Permissions
+-- 5. Permissions
 revoke all on function public.create_team_invite(uuid, text, text, text, timestamptz) from public;
 revoke all on function public.remove_team_member(uuid, uuid) from public;
 revoke all on function public.record_stripe_event_and_entitlement(text, text, uuid, text, text, text, text, text, timestamptz) from public;
 
 grant execute on function public.create_team_invite(uuid, text, text, text, timestamptz) to authenticated;
 grant execute on function public.remove_team_member(uuid, uuid) to authenticated;
-grant execute on function public.record_stripe_event_and_entitlement(text, text, uuid, text, text, text, text, text, timestamptz) to authenticated, service_role;
+grant execute on function public.record_stripe_event_and_entitlement(text, text, uuid, text, text, text, text, text, timestamptz) to project_admin;

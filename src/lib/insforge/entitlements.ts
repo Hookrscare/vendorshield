@@ -1,5 +1,7 @@
-import { createInsForgeServerClient } from "@/lib/insforge/server";
-import { EntitlementRow } from "@/lib/insforge/database.types";
+import {
+  createInsForgeAdminClient,
+  createInsForgeServerClient,
+} from "@/lib/insforge/server";
 
 export interface OrganizationEntitlementSummary {
   isPaid: boolean;
@@ -101,7 +103,7 @@ export const InsForgeEntitlements = {
     periodEnd?: string | null;
   }): Promise<{ success: boolean; deduplicated: boolean }> {
     try {
-      const client = await createInsForgeServerClient();
+      const client = createInsForgeAdminClient();
 
       const { data, error } = await client.database.rpc(
         "record_stripe_event_and_entitlement",
@@ -118,42 +120,53 @@ export const InsForgeEntitlements = {
         }
       );
 
-      if (error) {
-        // Fallback to direct table operations if RPC not yet migrated in test env
-        const existingEvent = await client.database
-          .from("stripe_events")
-          .select("event_id")
-          .eq("event_id", params.eventId)
-          .limit(1)
-          .maybeSingle();
-
-        if (existingEvent.data) {
-          return { success: true, deduplicated: true };
-        }
-
-        await client.database.from("stripe_events").insert([
-          { event_id: params.eventId, event_type: params.eventType },
-        ]);
-
-        if (params.organizationId && params.productKey) {
-          await client.database.from("entitlements").upsert([
-            {
-              organization_id: params.organizationId,
-              product_key: params.productKey,
-              status: params.status || "active",
-              stripe_customer_id: params.customerId || null,
-              stripe_subscription_id: params.subscriptionId || null,
-              stripe_checkout_session_id: params.sessionId || null,
-              current_period_end: params.periodEnd || null,
-              updated_at: new Date().toISOString(),
-            },
-          ]);
-        }
-
-        return { success: true, deduplicated: false };
-      }
+      if (error) throw new Error(`Failed to persist entitlement: ${error.message}`);
 
       // data is true if newly processed, false if duplicate
+      const isNew = Boolean(data);
+      return { success: true, deduplicated: !isNew };
+    } catch {
+      return { success: false, deduplicated: false };
+    }
+  },
+
+  async recordDirectoryClaim(params: {
+    vendorSlug: string;
+    subscriptionId?: string | null;
+  }): Promise<boolean> {
+    try {
+      const client = createInsForgeAdminClient();
+      const { data, error } = await client.database.rpc("record_directory_claim", {
+        p_vendor_slug: params.vendorSlug,
+        p_subscription_id: params.subscriptionId || null,
+      });
+      if (error) throw new Error(`Failed to persist directory claim: ${error.message}`);
+      return Boolean(data);
+    } catch {
+      return false;
+    }
+  },
+
+  async syncStripeSubscription(params: {
+    eventId: string;
+    eventType: string;
+    subscriptionId: string;
+    status: "trialing" | "active" | "past_due" | "canceled" | "expired";
+    periodEnd?: string | null;
+  }): Promise<{ success: boolean; deduplicated: boolean }> {
+    try {
+      const client = createInsForgeAdminClient();
+      const { data, error } = await client.database.rpc(
+        "sync_stripe_subscription_event",
+        {
+          p_event_id: params.eventId,
+          p_event_type: params.eventType,
+          p_subscription_id: params.subscriptionId,
+          p_status: params.status,
+          p_period_end: params.periodEnd || null,
+        }
+      );
+      if (error) throw new Error(`Failed to synchronize subscription: ${error.message}`);
       const isNew = Boolean(data);
       return { success: true, deduplicated: !isNew };
     } catch {
