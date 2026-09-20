@@ -1,17 +1,18 @@
-/* The Reference Library: warm paper, ink, ruled information. Scoped away from product workspaces. */
+/* The Reference Library: dark vellum, light ink, ruled information. Scoped away from product workspaces. */
 :root {
-  --paper: #f3f1e9;
-  --ink: #252b25;
-  --subtle: #60665a;
-  --rule: #d3d6c8;
-  --olive: #45563a;
-  --tint: #e6e9dd;
+  color-scheme: dark;
+  --paper: #171b17;
+  --ink: #eceee5;
+  --subtle: #b0b6a7;
+  --rule: #394235;
+  --olive: #bccda4;
+  --tint: #252d23;
 }
 .reference-page,
 .is-paper {
   color: var(--ink);
   background: var(--paper);
-  color-scheme: light;
+  color-scheme: dark;
 }
 .is-ink {
   --paper: #101611;
@@ -58,7 +59,7 @@
   outline-offset: 5px;
 }
 .reference-page a:visited {
-  color: #62614b;
+  color: #c6bea7;
 }
 .eyebrow {
   font-family: var(--font-sans), sans-serif !important;
@@ -228,7 +229,7 @@
   margin-bottom: 27px;
 }
 .library-intro .eyebrow span:last-child {
-  color: #858a7e;
+  color: #9da793;
 }
 .library-intro h1 {
   font-size: clamp(54px, 6.7vw, 94px);
@@ -285,26 +286,26 @@
 .document-leaf {
   position: absolute;
   inset: 0;
-  border: 1px solid #bfc5b3;
+  border: 1px solid #627154;
   border-radius: 2px;
-  background: #e0e4d8;
-  box-shadow: 8px 18px 24px #252b2515;
+  background: #303d29;
+  box-shadow: 8px 18px 24px #00000045;
   display: block;
   transition: transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
 }
 .leaf-back {
   transform: translate3d(52px, -12px, -55px) rotateZ(14deg);
-  background: #bcc5ac;
+  background: #45513a;
 }
 .leaf-middle {
   transform: translate3d(25px, -5px, -27px) rotateZ(6deg);
-  background: #d6dccd;
+  background: #343f2c;
 }
 .document-leaf > i {
   display: block;
   width: 60%;
   height: 1px;
-  background: #71806444;
+  background: #92a27d55;
   margin: 22px;
 }
 .document-leaf > i:first-child {
@@ -313,7 +314,7 @@
 .leaf-front {
   padding: 24px;
   text-align: left;
-  background: #f9f8f1;
+  background: #263125;
 }
 .document-wordmark {
   display: block;
@@ -323,7 +324,7 @@
 .document-rule {
   height: 1px;
   display: block;
-  background: #aeb8a1;
+  background: #738365;
   margin: 16px 0 24px;
 }
 .document-title {
@@ -358,7 +359,7 @@
   top: 55%;
   left: 50%;
   transform: translate(-50%, -50%) rotate(-13deg);
-  border: 1px solid #89987935;
+  border: 1px solid #899e703d;
   border-radius: 50%;
   z-index: -1;
 }
@@ -367,7 +368,7 @@
   position: absolute;
   width: 240px;
   height: 90px;
-  border: 1px solid #89987935;
+  border: 1px solid #899e703d;
   border-radius: 50%;
   left: 48px;
   top: 18px;
@@ -511,7 +512,7 @@
   color: var(--ink);
 }
 .search-line input::placeholder {
-  color: #777e70;
+  color: #a1ab98;
 }
 .search-line > svg {
   color: var(--olive);
@@ -539,7 +540,7 @@
 }
 .vendor-entry:hover,
 .vendor-entry.expanded {
-  background: #e9ebdf80;
+  background: #252d23;
 }
 .vendor-row {
   display: grid;
@@ -649,7 +650,7 @@
 .empty-glyph {
   font-family: var(--font-editorial), serif;
   font-size: 65px;
-  color: #909a83;
+  color: #a5b397;
 }
 .directory-empty h3 {
   font-size: 35px;

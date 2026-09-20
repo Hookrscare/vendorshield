@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Syne, DM_Sans, JetBrains_Mono, Newsreader } from "next/font/google";
 import "./globals.css";
 import { Navbar } from "@/components/Navbar";
@@ -34,6 +34,11 @@ const editorial = Newsreader({
   weight: ["400", "500"],
   style: ["normal", "italic"],
 });
+
+export const viewport: Viewport = {
+  colorScheme: "dark",
+  themeColor: "#171b17",
+};
 
 export const metadata: Metadata = {
   title: "VendorShield | Vendor records, clearly considered",
