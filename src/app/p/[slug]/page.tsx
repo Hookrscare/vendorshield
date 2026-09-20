@@ -54,7 +54,12 @@ export default function PublicSubprocessorsPage({
         setSubMessage({ type: "error", text: resData.error || "Subscription failed" });
         return;
       }
-      setSubMessage({ type: "success", text: "Subscribed! You will receive sub-processor change alerts." });
+      setSubMessage({
+        type: "success",
+        text:
+          resData.message ||
+          "Subscription saved. Email change alerts are not active yet; check this register for updates.",
+      });
       setSubEmail("");
       setTimeout(() => {
         setIsSubOpen(false);

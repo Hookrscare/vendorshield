@@ -56,7 +56,8 @@ export async function POST(
 
     return NextResponse.json({
       success: true,
-      message: "Subscription confirmed. You will receive sub-processor change alerts.",
+      message:
+        "Subscription saved. Email change alerts are not active yet; the public register remains available for manual review.",
     });
   } catch {
     return NextResponse.json(

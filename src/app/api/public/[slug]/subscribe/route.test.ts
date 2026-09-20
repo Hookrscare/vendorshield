@@ -60,7 +60,10 @@ describe("Public Sub-Processor Change Subscribe Route (QA-108)", () => {
 
     const res = await SUBSCRIBE(req, { params: Promise.resolve({ slug: "customer" }) });
     expect(res.status).toBe(200);
-    await expect(res.json()).resolves.toMatchObject({ success: true });
+    await expect(res.json()).resolves.toMatchObject({
+      success: true,
+      message: expect.stringContaining("Email change alerts are not active yet"),
+    });
     expect(rpcMock).toHaveBeenCalledWith("subscribe_subprocessor_changes", {
       p_slug: "customer",
       p_email: "compliance-officer@enterprise.com",

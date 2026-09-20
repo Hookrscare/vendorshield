@@ -49,7 +49,7 @@ const AUDIT_QUESTIONS: AuditQuestion[] = [
     category: "Customer Disclosure & Notification",
     question: "How do you notify customers before adding new sub-processors (GDPR Art. 28 / SOC 2 CC9.2)?",
     options: [
-      { label: "Public trust page with automated 30-day email notifications", points: 25 },
+      { label: "Public trust page with a subscriber-ready change register", points: 25 },
       { label: "Static privacy policy page updated manually once a year", points: 10 },
       { label: "No formal customer notification mechanism", points: 0 },
     ],

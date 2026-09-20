@@ -84,11 +84,14 @@ export default function TeamManagementPage() {
       const data = await res.json();
 
       if (!res.ok || !data.success) {
-        setInviteMessage({ type: "error", text: data.error || "Failed to send invitation" });
+        setInviteMessage({ type: "error", text: data.error || "Failed to create invitation" });
         return;
       }
 
-      setInviteMessage({ type: "success", text: `Invitation created for ${inviteEmail}` });
+      setInviteMessage({
+        type: "success",
+        text: data.message || `Invitation created for ${inviteEmail}. Email was not sent.`,
+      });
       setInviteEmail("");
       loadTeam();
       setTimeout(() => {
@@ -96,7 +99,7 @@ export default function TeamManagementPage() {
         setInviteMessage(null);
       }, 1500);
     } catch {
-      setInviteMessage({ type: "error", text: "Network error sending invitation" });
+      setInviteMessage({ type: "error", text: "Network error creating invitation" });
     } finally {
       setInviteLoading(false);
     }
@@ -419,7 +422,7 @@ export default function TeamManagementPage() {
                   className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold rounded-xl shadow-lg shadow-blue-600/30 transition-all flex items-center gap-1.5 disabled:bg-gray-800 disabled:text-gray-500"
                 >
                   {inviteLoading && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-                  Send Invitation
+                  Create Invitation
                 </button>
               </div>
             </form>
