@@ -40,6 +40,7 @@ import { VoiceRecorder } from "@/components/snapinspect/VoiceRecorder";
 import { parseInspectorVoiceTranscript } from "@/lib/snapinspect/voice-parser";
 import { generateInspectionPdf } from "@/lib/snapinspect/pdf-generator";
 import { OfflineSyncManager, OfflineSyncState } from "@/lib/snapinspect/offline-sync";
+import { CloudInspectionPanel } from "@/components/snapinspect/CloudInspectionPanel";
 import { Wifi, WifiOff } from "lucide-react";
 
 export default function SnapInspectAppPage() {
@@ -53,6 +54,7 @@ export default function SnapInspectAppPage() {
   const [editingDefect, setEditingDefect] = useState<DefectItem | null>(null);
   const [showVoiceRecorder, setShowVoiceRecorder] = useState(false);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+  const [localSaveError, setLocalSaveError] = useState("");
   const [syncState, setSyncState] = useState<OfflineSyncState>({
     isOnline: true,
     swRegistered: false,
@@ -90,7 +92,8 @@ export default function SnapInspectAppPage() {
     setInspections(newInspections);
     try {
       localStorage.setItem("snapinspect_data_v1", JSON.stringify(newInspections));
-    } catch (e) {}
+      setLocalSaveError("");
+    } catch { setLocalSaveError("Device storage is full. Changes are in memory only; export a backup or save to your workspace now."); }
   };
 
   const activeInspection =
@@ -144,27 +147,25 @@ export default function SnapInspectAppPage() {
   };
 
   const handleCreateNewInspection = () => {
-    const newId = `insp-${Date.now().toString().slice(-6)}`;
+    const newId = `insp-${crypto.randomUUID()}`;
     const newInspection: InspectionData = {
       id: newId,
       title: "New Property Inspection",
       trade: "residential",
-      inspectorName: activeInspection.inspectorName || "Marcus Vance, CMI",
-      inspectorCompany: activeInspection.inspectorCompany || "Apex Specialty Inspections LLC",
-      inspectorLicense: activeInspection.inspectorLicense || "InterNACHI #240982-A",
-      inspectorPhone: activeInspection.inspectorPhone || "(555) 392-8190",
-      inspectorEmail: activeInspection.inspectorEmail || "marcus@apexinspections.com",
-      clientName: "New Client",
-      clientEmail: "client@example.com",
-      clientPhone: "(555) 000-0000",
-      propertyAddress: "100 Main St, Austin, TX",
-      propertySquareFeet: 2400,
-      yearBuilt: 2018,
+      inspectorName: "",
+      inspectorCompany: "",
+      inspectorLicense: "",
+      inspectorPhone: "",
+      inspectorEmail: "",
+      clientName: "",
+      clientEmail: "",
+      clientPhone: "",
+      propertyAddress: "",
       inspectionDate: new Date().toISOString().split("T")[0],
-      weatherConditions: "72°F, Sunny, Dry",
+      weatherConditions: "",
       scopeOfInspection: TRADE_TEMPLATES.residential.defaultScope,
-      overallCondition: "Good / Pass",
-      executiveSummary: "Visual examination completed in accordance with standards.",
+      overallCondition: "Not assessed",
+      executiveSummary: "Inspection findings have not yet been entered. Review all fields before sharing.",
       defects: [],
       status: "draft",
       disclaimerAccepted: true,
@@ -201,7 +202,15 @@ export default function SnapInspectAppPage() {
 
   return (
     <div className="bg-gray-950 text-gray-100 min-h-screen pb-20">
-      <div className="mx-auto max-w-7xl p-4 text-sm text-amber-200 bg-amber-500/10">Local prototype: starts with sample records. Changes stay in this browser; cloud sync and client sharing are unavailable. Export a PDF backup. Voice suggestions use keyword rules and require review.</div>
+      <div className="mx-auto max-w-7xl p-4 text-sm text-amber-200 bg-amber-500/10">Starts with sample records. Edit locally, then choose Save to workspace for a cloud copy. Share only reports you have reviewed. Voice suggestions use keyword rules and require review.</div>
+      {localSaveError && <p role="alert" className="p-4 text-rose-200">{localSaveError}</p>}
+      <CloudInspectionPanel inspection={activeInspection} onLoad={(cloudInspection) => {
+        const existing = inspections.find(item => item.id === cloudInspection.id);
+        const preserved = existing && JSON.stringify(existing) !== JSON.stringify(cloudInspection)
+          ? [{ ...existing, id: `local-${crypto.randomUUID()}`, title: `${existing.title} (local backup)`.slice(0, 240) }] : [];
+        saveInspections([cloudInspection, ...preserved, ...inspections.filter(item => item.id !== cloudInspection.id)]);
+        setActiveInspectionId(cloudInspection.id);
+      }} />
       {/* Mobile Top Bar & App Header */}
       <div className="sticky top-16 z-30 bg-gray-900/95 backdrop-blur-md border-b border-gray-800 px-4 sm:px-6 py-3">
         <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
@@ -239,7 +248,7 @@ export default function SnapInspectAppPage() {
               {syncState.isOnline ? (
                 <>
                   <Wifi className="w-3.5 h-3.5 text-emerald-400" />
-                  <span className="text-emerald-400 font-semibold">Online · local storage only</span>
+                  <span className="text-emerald-400 font-semibold">Online · draft stored locally</span>
                 </>
               ) : (
                 <>
@@ -773,11 +782,11 @@ export default function SnapInspectAppPage() {
 
               <div className="flex items-center gap-3 w-full sm:w-auto">
                 <button
-                  disabled title="Reports are stored on this device; public client links are not implemented."
+                  disabled title="Use Workspace storage & client report above to create a reviewed snapshot link."
                   className="flex-1 sm:flex-none px-4 py-2.5 bg-gray-800 hover:bg-gray-700 text-gray-200 text-xs font-bold rounded-xl border border-gray-700 flex items-center justify-center gap-1.5 transition-colors"
                 >
                   <Share2 className="w-4 h-4" />
-                  <span>Client sharing unavailable</span>
+                  <span>Share via workspace panel</span>
                 </button>
 
                 <button

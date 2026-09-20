@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { compressInspectionPhotoAsync } from "@/lib/snapinspect/photo-worker";
 import { DefectPhoto } from "@/lib/snapinspect/types";
 import { ImagePlus, Trash2, Camera, Sparkles } from "lucide-react";
 
@@ -37,25 +38,21 @@ const SAMPLE_PHOTO_CHOICES = [
 export function PhotoUpload({ photos, onChange }: PhotoUploadProps) {
   const [captionInput, setCaptionInput] = useState("");
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files || files.length === 0) return;
-
-    const file = files[0];
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const base64 = event.target?.result as string;
-      const newPhoto: DefectPhoto = {
-        id: generatePhotoId(),
-        url: base64,
-        caption: captionInput || file.name.replace(/\.[^/.]+$/, ""),
-        annotation: "Field photo capture",
-        timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-      };
-      onChange([...photos, newPhoto]);
+  const [uploadError, setUploadError] = useState("");
+  const [uploading, setUploading] = useState(false);
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || uploading) return;
+    if (file.size > 20_000_000 || !/^image\/(jpeg|png|webp|gif)$/.test(file.type)) {
+      setUploadError("Choose a JPEG, PNG, WebP, or GIF image under 20 MB."); return;
+    }
+    setUploading(true); setUploadError("");
+    try {
+      const url = await compressInspectionPhotoAsync({ file });
+      onChange([...photos, { id: generatePhotoId(), url, caption: captionInput || file.name.replace(/\.[^/.]+$/, ""), annotation: "Field photo capture", timestamp: new Date().toISOString() }]);
       setCaptionInput("");
-    };
-    reader.readAsDataURL(file);
+    } catch { setUploadError("Could not read this photo. Your existing photos are unchanged."); }
+    finally { setUploading(false); }
   };
 
   const handleAddSample = (sample: typeof SAMPLE_PHOTO_CHOICES[0]) => {
@@ -75,6 +72,8 @@ export function PhotoUpload({ photos, onChange }: PhotoUploadProps) {
 
   return (
     <div className="space-y-3">
+      {uploadError && <p role="alert" className="text-sm text-amber-200">{uploadError}</p>}
+      {uploading && <p role="status" className="text-sm text-gray-300">Preparing photo…</p>}
       <div className="flex items-center justify-between">
         <label className="text-xs font-bold text-gray-300 uppercase tracking-wider flex items-center gap-1.5">
           <Camera className="w-3.5 h-3.5 text-blue-400" />

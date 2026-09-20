@@ -11,6 +11,7 @@ export type InspectionTrade =
   | "custom";
 
 export type InspectionCondition =
+  | "Not assessed"
   | "Good / Pass"
   | "Fair / Maintenance Required"
   | "Poor / Significant Action Needed"
