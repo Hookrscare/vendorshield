@@ -81,7 +81,7 @@ const doc = {
  inspectorName: "Synthetic Inspector", inspectorCompany: "QA", inspectorLicense: "", inspectorPhone: "", inspectorEmail: "qa@example.com",
  clientName: "Synthetic Client", clientEmail: "client@example.com", clientPhone: "", propertyAddress: "QA Test Property", inspectionDate: "2026-09-20",
  weatherConditions: "Test", scopeOfInspection: "Synthetic QA only", overallCondition: "Fair / Maintenance Required", executiveSummary: "Private QA notes", status: "draft", disclaimerAccepted: true,
- createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), defects: [{ id:"def-test",title:"QA defect",category:"Test",description:"QA finding",severity:"Minor / Cosmetic",location:"Test",actionRecommended:"Review",createdAt:new Date().toISOString(),photos:[] }]
+ createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), defects: [{ id:"def-test",title:"QA defect",category:"Test",description:"QA finding",severity:"Minor / Cosmetic",location:"Test",actionRecommended:"Review",createdAt:new Date().toISOString(),photos:[{id:"qa-photo",caption:"Synthetic one-pixel fixture",timestamp:new Date().toISOString(),url:"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jF9sAAAAASUVORK5CYII="}] }]
 };
 const request = (user,path,body,organizationId) => appRequest(user,path,{method:"POST",body:JSON.stringify(body)},organizationId);
 try {
