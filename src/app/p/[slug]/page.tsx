@@ -152,7 +152,7 @@ export default function PublicSubprocessorsPage({
                   className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-semibold flex items-center gap-2 shadow-lg shadow-blue-600/20 transition-all hover:scale-[1.02]"
                 >
                   <Bell className="w-3.5 h-3.5" />
-                  Subscribe to Change Alerts
+                  Join Alert Waitlist
                 </button>
 
                 <button
@@ -168,7 +168,7 @@ export default function PublicSubprocessorsPage({
             <div className="pt-4 border-t border-gray-800/80 flex flex-wrap items-center gap-6 text-xs text-gray-400">
               <div className="flex items-center gap-1.5 text-emerald-400">
                 <CheckCircle2 className="w-4 h-4" />
-                <span>GDPR Article 28 &amp; SOC 2 Compliant</span>
+                <span>GDPR Article 28 register · SOC 2 evidence fields</span>
               </div>
               <div className="flex items-center gap-1.5">
                 <Calendar className="w-4 h-4 text-blue-400" />
@@ -291,7 +291,7 @@ export default function PublicSubprocessorsPage({
             >
               VendorShield
             </a>{" "}
-            — Automated SOC 2 &amp; GDPR Sub-Processor Synchronizer
+            — Record-based sub-processor disclosure
           </p>
         </div>
       </div>
@@ -303,7 +303,7 @@ export default function PublicSubprocessorsPage({
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Bell className="w-5 h-5 text-blue-400" />
-                <h3 className="text-lg font-bold text-white">Subscribe to Change Alerts</h3>
+                <h3 className="text-lg font-bold text-white">Join the Change-Alert Waitlist</h3>
               </div>
               <button
                 onClick={() => setIsSubOpen(false)}
@@ -314,9 +314,9 @@ export default function PublicSubprocessorsPage({
             </div>
 
             <p className="text-xs text-gray-400 leading-relaxed">
-              In accordance with <strong>GDPR Article 28(2)</strong>, enter your work email to receive
-              written notification at least 30 days prior to the engagement or replacement of any
-              sub-processor by {company.name}.
+              Email change alerts are not active yet. Save your work email to register interest,
+              and review this public register manually for current sub-processor information from{" "}
+              {company.name}.
             </p>
 
             <form onSubmit={handleSubscribe} className="space-y-4">
@@ -368,7 +368,7 @@ export default function PublicSubprocessorsPage({
                   className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold rounded-xl shadow-lg shadow-blue-600/30 transition-all flex items-center gap-1.5 disabled:bg-gray-800 disabled:text-gray-500"
                 >
                   {subLoading && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-                  Confirm Subscription
+                  Save Interest
                 </button>
               </div>
             </form>
